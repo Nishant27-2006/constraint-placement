@@ -4,12 +4,13 @@ results/
 data/
 logs/
 figs/
-paper/
+
 *.jsonl
 *.pkl
 *.npz
 *.csv
 *.pdf
+!paper/iclr_submission.pdf
 
 .venv/
 __pycache__/

@@ -276,12 +276,14 @@ def main():
     w('<h1 class="title is-1 publication-title">Where Does a Physical Constraint '
       "Belong in a Generative Model?</h1>")
     w('<p class="is-size-4" style="color:#4a4a4a;margin-top:.7rem">'
-      "Constraint-exact scenario generation for power grids</p>")
+      "A codimension-controlled benchmark for constraint-exact<br>"
+      "power-grid scenario generation</p>")
     w('<div class="is-size-5 publication-authors"><span class="author-block">'
       "Anonymous Authors</span></div>")
     w('<div class="venue-tag">Under review at ICLR</div>')
     w('<div class="column has-text-centered"><div class="publication-links">')
     for icon, label, href in [
+            ("fas fa-file-pdf", "Paper", "paper.pdf"),
             ("fab fa-github", "Code", REPO),
             ("fas fa-table", "Results", f"{REPO}/blob/main/docs/RESULTS.md"),
             ("fas fa-clipboard-check", "Pre-registration",
@@ -294,19 +296,25 @@ def main():
     # -------------------------------------------------------------- abstract
     sec("Abstract")
     w('<div class="content has-text-justified">')
-    w("<p>Generative scenario models for power grids must obey the physics they "
-      "describe &mdash; a set of injections that breaks Kirchhoff's laws is not a "
-      "pessimistic forecast, it is an impossible one. Several methods achieve "
-      "<b>exact</b> constraint satisfaction. The open question is <b>where the "
-      "constraint belongs</b>: in the hypothesis class, at inference, in the loss, or "
-      "in the coordinates.</p>")
-    w(f"<p>We benchmark all four routes under identical backbones, budgets and data "
-      f"&mdash; <b>{nmeth} methods, {nseeds} seeds, three suites</b> built from real "
-      "grid measurements &mdash; varying one thing: the <b>codimension</b> of the "
-      "constraint set, the fraction of the state the physics already determines. "
-      "<b>The answer is not universal.</b> On a controlled contrast, train-time "
-      "projection moves from indistinguishable from doing nothing to a significant "
-      "win; on a third real dataset the same code is significantly worse.</p>")
+    w("<p>Generative models are increasingly used to produce operational scenarios "
+      "for power systems, and such scenarios must satisfy the physical laws they "
+      "describe: a set of injections that violates Kirchhoff's laws is not a "
+      "conservative forecast but an impossible one. Several methods achieve "
+      "<b>exact</b> satisfaction of affine physical invariants, and the literature "
+      "disagrees about which to prefer. We argue the open question is not whether to "
+      "enforce a constraint but <b>where it belongs</b>: in the hypothesis class "
+      "(train-time projection), at inference (zero-shot correction), in the loss "
+      "(penalty), or in the coordinates (nullspace or completion).</p>")
+    w(f"<p>We give the affine theory &mdash; train-time projection is exact under any "
+      f"Runge&ndash;Kutta scheme, excludes no minimiser, and never increases the "
+      f"flow-matching loss &mdash; then build a benchmark that varies one quantity, the "
+      f"<b>codimension</b> of the constraint set, across <b>{nmeth} methods, {nseeds} "
+      f"seeds and three suites</b> derived from real grid measurements. "
+      f"<b>The answer is not universal.</b> On a controlled contrast in which the only "
+      f"change is how much of the state the physics determines, train-time projection "
+      f"moves from statistically indistinguishable from unconstrained flow matching to "
+      f"a significant improvement; on a third real dataset the identical code is "
+      f"significantly worse.</p>")
     w("</div>")
     endsec()
 
