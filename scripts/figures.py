@@ -11,7 +11,7 @@ from collections import defaultdict
 import numpy as np
 from scipy.stats import spearmanr
 
-from svgfig import Figure, Scale, SERIES, OKABE, SHAPES
+from svgfig import Figure, Scale, SERIES, OKABE, SHAPES, LabelPlacer, text_box
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "results")
@@ -91,6 +91,12 @@ def fig_signflip(meta, mains):
                f'height="{max(yz-F.y0,0):.2f}" fill="var(--bad)" opacity=".05"/>')
     F.label(F.x0 + 8, F.y0 + 16, "worse than no constraint", "var(--bad)", "start", "note")
 
+    lp = LabelPlacer(F)
+    lp.reserve_text(F.x1 - 6, sy(0.0) - 7, "no effect", "rule-lbl", "end")
+    lp.reserve_text(F.x0 + 8, F.y0 + 16, "worse than no constraint", "note")
+    lp.reserve_text(F.x0 + 8, F.y1 - 12,
+                    "Filled = significant at 5% (paired, 10 seeds). Bars are 95% CIs.",
+                    "note")
     for name, pretty, col, shp in METHODS:
         pts = data[name]
         F.path([(sx(p[0]), sy(p[1])) for p in pts], col, 2.2, op=.9)
@@ -101,9 +107,15 @@ def fig_signflip(meta, mains):
             F.mark(shp, x, sy(pct), col, 6.0 if sig else 5.0, filled=sig,
                    title=f"{name} on codim {c:.3f}: {pct:+.2f}% "
                          f"(95% CI {clo:+.2f} to {chi:+.2f}, t={t:+.2f}, n={n})")
-        # direct label at the right-hand end -- no detached legend
-        cx, cy = pts[-1][0], pts[-1][1]
-        F.label(sx(cx) + 12, sy(cy) + 4, pretty, col, "start", "series-lbl")
+            lp.reserve_mark(x, sy(pct), 8)
+            lp.reserve_box([x - 5, sy(chi) - 4, x + 5, sy(clo) + 4])
+    # direct labels at the right-hand end, de-collided against everything placed
+    RING = [(13, 4, "start"), (13, -11, "start"), (13, 18, "start"),
+            (13, -24, "start"), (13, 31, "start"), (13, -37, "start"),
+            (13, 44, "start")]
+    for name, pretty, col, shp in sorted(METHODS, key=lambda m: data[m[0]][-1][1]):
+        pts = data[name]
+        lp.place(sx(pts[-1][0]), sy(pts[-1][1]), pretty, col, "series-lbl", ring=RING)
 
     F.axis_titles("Constraint codimension  r / D  →",
                   "Δ energy score vs unconstrained FM")
@@ -142,35 +154,53 @@ def fig_pareto(mains):
         return {0: "1", 1: "10", 2: "100", 3: "1k"}.get(e, f"1e{e}")
     F.grid_x(sx, sx.ticks(), logfmt)
 
-    # the quadrant that matters
-    F.o.append(f'<rect x="{F.x0}" y="{sy(min(ys))-2:.2f}" '
-               f'width="{sx(1e-2)-F.x0:.2f}" height="{sy(min(ys))*0+60:.2f}" '
-               f'fill="{OKABE["green"]}" opacity=".06" rx="4"/>')
+    # the region every exact route occupies
+    band_r = sx(1e-2)
+    F.o.append(f'<rect x="{F.x0+1}" y="{F.y0+1}" width="{band_r-F.x0:.2f}" '
+               f'height="{F.y1-F.y0-2:.2f}" fill="{OKABE["green"]}" opacity=".055"/>')
+    F.o.append(f'<line x1="{band_r:.2f}" y1="{F.y0+1}" x2="{band_r:.2f}" '
+               f'y2="{F.y1-1}" stroke="{OKABE["green"]}" stroke-width="1.1" '
+               f'stroke-dasharray="4 4" opacity=".55"/>')
+    F.label(band_r - 8, F.y1 - 10, "exactly feasible", OKABE["green"], "end", "note")
+
+    lp = LabelPlacer(F)
+    lp.reserve_text(F.x0 + 8, F.y0 + 18, "Raising \u03bb walks the family up,", "note")
+    lp.reserve_text(F.x0 + 8, F.y0 + 32, "never left \u2014 fidelity is spent,", "note")
+    lp.reserve_text(F.x0 + 8, F.y0 + 46, "feasibility is not bought.", "note")
+    lp.reserve_text(band_r - 8, F.y1 - 10, "exactly feasible", "note", "end")
 
     col_p, col_e = SERIES[3], SERIES[0]
     F.path([(sx(p[2]), sy(p[1])) for p in pens], col_p, 1.8, dash="4 4", op=.8)
     for lam, es, eq in pens:
         F.mark("diamond", sx(eq), sy(es), col_p, 6.0,
                title=f"penalty lambda={lam}: ES {es:.4g}, violation {eq:.3g} MW")
-        F.label(sx(eq) + 10, sy(es) + 4, f"λ={lam}", col_p, "start", "lbl")
+        lp.reserve_mark(sx(eq), sy(es), 8)
+    F.mark("cross", sx(unc[2]), sy(unc[1]), "var(--muted)", 6.0,
+           title=f"unconstrained FM: ES {unc[1]:.4g}, violation {unc[2]:.3g} MW")
+    lp.reserve_mark(sx(unc[2]), sy(unc[1]), 8)
     for i, (n, es, eq) in enumerate(exact):
         ours = n == "HFM (ours)"
         F.mark(SHAPES[i % len(SHAPES)], sx(eq), sy(es), col_e if ours else SERIES[1],
                6.5 if ours else 5.2,
                title=f"{n}: ES {es:.4g}, violation {eq:.3g} MW")
-        F.label(sx(eq) + 10, sy(es) + 4, n, col_e if ours else "var(--muted)",
-                "start", "series-lbl" if ours else "lbl")
-    F.mark("cross", sx(unc[2]), sy(unc[1]), "var(--muted)", 6.0,
-           title=f"unconstrained FM: ES {unc[1]:.4g}, violation {unc[2]:.3g} MW")
-    F.label(sx(unc[2]) + 10, sy(unc[1]) + 4, "FM (unconstrained)", "var(--muted)",
-            "start", "lbl")
+        lp.reserve_mark(sx(eq), sy(es), 8)
+
+    # labels last, so placement sees every mark
+    for lam, es, eq in pens:
+        lp.place(sx(eq), sy(es), f"\u03bb={lam}", col_p, "lbl")
+    lp.place(sx(unc[2]), sy(unc[1]), "FM (unconstrained)", "var(--muted)", "lbl")
+    order = sorted(exact, key=lambda e: e[1])
+    for n, es, eq in order:
+        ours = n == "HFM (ours)"
+        lp.place(sx(eq), sy(es), n + (" \u2605" if ours else ""),
+                 col_e if ours else "var(--muted)",
+                 "series-lbl" if ours else "lbl")
 
     F.axis_titles("Worst-case violation  ||Ax−b||∞  (MW, log scale)  →",
                   "Energy score  ↓")
     F.note(F.x0 + 8, F.y0 + 18,
-           ["Better ← on both axes", "λ moves up, not left:",
-            "penalties buy fidelity loss, not feasibility"], cls="note")
-    F.arrow(F.x0 + 150, F.y0 + 30, F.x0 + 60, F.y1 - 40)
+           ["Raising λ walks the family up,", "never left — fidelity is spent,",
+            "feasibility is not bought."], cls="note")
     return F.done()
 
 
@@ -191,7 +221,7 @@ def fig_regret(down, measured):
     r_cov = float(np.corrcoef(xs, ys)[0, 1]); sp = spearmanr(xs, ys)
     r_es = float(np.corrcoef(zs, ys)[0, 1]); sp_es = spearmanr(zs, ys)
 
-    F = Figure(880, 520, 76, 44, 34, 66,
+    F = Figure(880, 520, 76, 132, 34, 66,
                "Unit-commitment cost regret versus scenario calibration",
                "Scatter of two-stage stochastic unit-commitment cost regret against "
                "90 percent interval coverage for sixteen generators. Regret falls "
@@ -206,34 +236,48 @@ def fig_regret(down, measured):
     a, b = np.polyfit(xs, ys, 1)
     F.path([(sx(xs.min()), sy(a * xs.min() + b)), (sx(xs.max()), sy(a * xs.max() + b))],
            "var(--muted)", 1.6, dash="6 5", op=.85)
-    F.label(sx(xs.max()), sy(a * xs.max() + b) - 10, "least squares", "var(--muted)",
-            "end", "note")
 
-    LBL = {"HFM (ours)": (12, 4), "FM+reduced": (12, 4), "FM+DC3": (12, 14),
-           "GaussianCopula": (-12, -8), "NormFlow-RealNVP": (-12, 6),
-           "kNN-Historical": (12, -8), "cWGAN-GP": (-12, 4), "cVAE": (-12, 4),
-           "DDPM": (12, 4), "FM": (12, -8)}
+    lp = LabelPlacer(F, bounds=(F.x0 - 58, F.y0 - 24, F.w - 6, F.y1 + 24))
+    # reserve the two annotation blocks before anything else competes for space
+    lp.reserve_box([F.x0 + 10, F.y0 + 6, F.x0 + 200, F.y0 + 44])
+    stat_lines = [
+        f"regret vs coverage   r = {r_cov:+.3f}  (\u03c1 = {sp.statistic:+.2f}, "
+        f"p = {sp.pvalue:.3f})",
+        f"regret vs energy score   r = {r_es:+.3f}  (\u03c1 = {sp_es.statistic:+.2f}, "
+        f"p = {sp_es.pvalue:.2f}, n.s.)",
+        "Feasibility does not reach the decision; calibration does."]
+    lp.reserve_box([F.x1 - 400, F.y0 + 6, F.x1 - 6, F.y0 + 52])
+    lp.reserve_box([sx(xs.max()) - 90, sy(a * xs.max() + b) - 16,
+                    sx(xs.max()) + 6, sy(a * xs.max() + b) + 2])
+
     for x, y, name, ex in pts:
         F.mark("circle" if ex else "square", sx(x), sy(y),
                SERIES[0] if ex else SERIES[1], 6.4 if ex else 5.4, filled=ex,
                title=f"{name}: regret {y:.1f}%, coverage {x:.3f}")
-        if name in LBL:
-            dx, dy = LBL[name]
-            F.label(sx(x) + dx, sy(y) + dy, name,
-                    SERIES[0] if ex else "var(--muted)",
-                    "start" if dx > 0 else "end", "lbl")
+        lp.reserve_mark(sx(x), sy(y), 8.5)
+
+    NAMED = ["HFM (ours)", "FM+reduced", "FM+DC3", "FM+PCFM", "FM+posthoc",
+             "GaussianCopula", "NormFlow-RealNVP", "kNN-Historical", "cWGAN-GP",
+             "cVAE", "DDPM", "FM"]
+    unplaced = []
+    for name in NAMED:
+        m = next((q for q in pts if q[2] == name), None)
+        if not m:
+            continue
+        x, y, _, ex = m
+        ok = lp.place(sx(x), sy(y), name, SERIES[0] if ex else "var(--muted)",
+                      "series-lbl" if ex else "lbl")
+        if not ok:
+            unplaced.append(name)
+
     F.legend([("circle", SERIES[0], "exactly feasible", True),
               ("square", SERIES[1], "all other generators", False)],
-             F.x0 + 14, F.y0 + 22)
+             F.x0 + 16, F.y0 + 20)
+    F.label(sx(xs.max()) - 6, sy(a * xs.max() + b) - 8, "least squares",
+            "var(--muted)", "end", "note")
+    F.note(F.x1 - 8, F.y0 + 18, stat_lines, anchor="end", cls="note")
     F.axis_titles("90% interval coverage (calibration)  →",
                   "Unit-commitment cost regret  ↓")
-    F.note(F.x1 - 14, F.y0 + 22,
-           [f"regret vs coverage   r = {r_cov:+.3f}  (ρ = {sp.statistic:+.2f}, "
-            f"p = {sp.pvalue:.3f})",
-            f"regret vs energy score   r = {r_es:+.3f}  (ρ = {sp_es.statistic:+.2f}, "
-            f"p = {sp_es.pvalue:.2f}, n.s.)",
-            "Feasibility does not reach the decision; calibration does."],
-           anchor="end", cls="note")
     return F.done()
 
 
@@ -263,14 +307,19 @@ def fig_frontier(eff):
     F.frame()
     F.grid_y(sy, sy.ticks(6), lambda v: f"{v:.0f}")
     F.grid_x(sx, [2, 5, 10, 20, 50, 100, 200, 500], lambda v: f"{v:g}")
+    lp = LabelPlacer(F)
     for name, col, shp in SER:
         pts = data[name]
         F.path([(sx(n), sy(e)) for n, e in pts], col, 2.2, op=.9)
         for n, e in pts:
             F.mark(shp, sx(n), sy(e), col, 5.2,
                    title=f"{name}: NFE {n}, ES {e:.4g}")
-        n, e = pts[-1]
-        F.label(sx(n) + 12, sy(e) + 4, name, col, "start", "series-lbl")
+            lp.reserve_mark(sx(n), sy(e), 7)
+    for name, col, shp in SER:
+        n, e = data[name][-1]
+        lp.place(sx(n), sy(e), name, col, "series-lbl",
+                 ring=[(13, 4, "start"), (13, -11, "start"), (13, 18, "start"),
+                       (13, -24, "start"), (13, 31, "start")])
 
     fm = data["FM"]; hf = data["HFM (ours)"]
     fm_best_n, fm_best_e = min(fm, key=lambda p: p[1])
@@ -279,10 +328,18 @@ def fig_frontier(eff):
         cn, ce = min(cand, key=lambda p: p[0])
         F.o.append(f'<line x1="{F.x0}" y1="{sy(fm_best_e):.2f}" x2="{F.x1}" '
                    f'y2="{sy(fm_best_e):.2f}" class="rule" stroke-dasharray="4 4"/>')
-        F.arrow(sx(fm_best_n), sy(fm_best_e) - 6, sx(cn) + 6, sy(fm_best_e) - 6)
-        F.note(sx(cn) + 10, sy(fm_best_e) - 16,
-               [f"{fm_best_n/max(cn,1):.0f}× fewer evaluations",
-                f"for a better score (NFE {cn} vs {fm_best_n})"], cls="note")
+        # vertical drops mark the two budgets being compared
+        for nn in (cn, fm_best_n):
+            F.o.append(f'<line x1="{sx(nn):.2f}" y1="{sy(fm_best_e):.2f}" '
+                       f'x2="{sx(nn):.2f}" y2="{F.y1:.2f}" stroke="var(--muted)" '
+                       f'stroke-width="1" stroke-dasharray="2 4" opacity=".65"/>')
+        F.arrow(sx(fm_best_n), F.y1 - 14, sx(cn) + 7, F.y1 - 14)
+        F.label((sx(cn) + sx(fm_best_n)) / 2, F.y1 - 20,
+                f"{fm_best_n/max(cn,1):.0f}\u00d7 fewer evaluations, better score",
+                "var(--muted)", "middle", "note")
+        F.label(sx(cn), F.y1 - 2, f"NFE {cn}", "var(--muted)", "middle", "note")
+        F.label(sx(fm_best_n), F.y1 - 2, f"NFE {fm_best_n}", "var(--muted)",
+                "middle", "note")
     F.axis_titles("Function evaluations per scenario (NFE, log scale)  →",
                   "Energy score  ↓")
     return F.done()

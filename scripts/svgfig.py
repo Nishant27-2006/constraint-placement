@@ -226,3 +226,80 @@ class Figure:
     def done(self):
         self.o.append("</svg>")
         return "".join(self.o)
+
+
+# ---------------------------------------------------------------- labelling
+FONT_SIZE = {"tick": 12.0, "lbl": 12.0, "series-lbl": 12.5, "axis": 12.5,
+             "note": 11.5, "legend-t": 11.5, "rule-lbl": 11.0}
+CHAR_W = 0.56          # mean glyph width / font size for Noto Sans
+LINE_H = 1.15
+
+
+def text_box(x, y, s, cls="lbl", anchor="start"):
+    fs = FONT_SIZE.get(cls, 12.0)
+    w, h = len(s) * fs * CHAR_W, fs * LINE_H
+    x0 = x if anchor == "start" else (x - w if anchor == "end" else x - w / 2)
+    return [x0, y - h * 0.8, x0 + w, y + h * 0.2]
+
+
+def _hit(a, b, pad=1.5):
+    return not (a[2] + pad <= b[0] or b[2] + pad <= a[0]
+                or a[3] + pad <= b[1] or b[3] + pad <= a[1])
+
+
+class LabelPlacer:
+    """Greedy point-feature label placement with leader lines.
+
+    Standard approach: for each anchor try a ring of candidate offsets in
+    preference order, take the first that collides with nothing already placed
+    and stays inside the frame. If every candidate fails, push the label out to
+    a free slot and draw a leader line to it. Labels that still cannot be placed
+    are reported so the caller can fall back to a legend rather than emit a
+    collision.
+    """
+
+    RING = [(10, 4, "start"), (-10, 4, "end"), (10, -9, "start"), (10, 15, "start"),
+            (-10, -9, "end"), (-10, 15, "end"), (0, -12, "middle"), (0, 18, "middle"),
+            (14, -20, "start"), (-14, -20, "end"), (14, 24, "start"), (-14, 24, "end"),
+            (22, -32, "start"), (-22, -32, "end"), (22, 36, "start"), (-22, 36, "end")]
+
+    def __init__(self, fig, bounds=None):
+        self.f = fig
+        self.taken = []
+        self.bounds = bounds or (fig.x0 - 60, fig.y0 - 26, fig.x1 + 168, fig.y1 + 26)
+
+    def reserve_box(self, box):
+        self.taken.append(list(box))
+
+    def reserve_mark(self, x, y, r=7.5):
+        self.taken.append([x - r, y - r, x + r, y + r])
+
+    def reserve_text(self, x, y, s, cls="lbl", anchor="start"):
+        self.taken.append(text_box(x, y, s, cls, anchor))
+
+    def _free(self, box):
+        b = self.bounds
+        if box[0] < b[0] or box[2] > b[2] or box[1] < b[1] or box[3] > b[3]:
+            return False
+        return not any(_hit(box, t) for t in self.taken)
+
+    def place(self, ax, ay, s, color="var(--fg)", cls="lbl", leader=True,
+              ring=None):
+        """Place `s` near (ax, ay). Returns True if placed."""
+        for dx, dy, anchor in (ring or self.RING):
+            x, y = ax + dx, ay + dy
+            box = text_box(x, y, s, cls, anchor)
+            if self._free(box):
+                far = abs(dx) > 16 or abs(dy) > 20
+                if far and leader:
+                    tx = box[0] - 3 if anchor == "start" else (
+                        box[2] + 3 if anchor == "end" else (box[0] + box[2]) / 2)
+                    ty = (box[1] + box[3]) / 2
+                    self.f.o.append(
+                        f'<path d="M{ax:.2f},{ay:.2f}L{tx:.2f},{ty:.2f}" '
+                        f'stroke="{color}" stroke-width="0.9" fill="none" '
+                        f'opacity=".55"/>')
+                self.f.label(x, y, s, color, anchor, cls)
+                self.taken.append(box)
+                return True
+        return False
