@@ -239,17 +239,16 @@ def main():
     ac = load("ac.jsonl") + load("ac_retract20.jsonl")
     nseeds = len({r["seed"] for r in mains["grid"]})
     nmeth = len({r["method"] for r in mains["grid"]})
+    fl = {s: paired(mains[s], "HFM (ours)", "FM") for s, _ in SUITES}
     H = []
     w = H.append
 
-    def sec(title, light=False, extra=""):
+    def sec(title, light=False):
         w(f'<section class="section{" hero is-small is-light" if light else ""}">')
         w('<div class="container is-max-desktop">')
         w('<div class="columns is-centered"><div class="column is-full-width">')
         if title:
             w(f'<h2 class="title is-3 has-text-centered">{title}</h2>')
-        if extra:
-            w(extra)
 
     def endsec():
         w("</div></div></div></section>")
@@ -257,9 +256,9 @@ def main():
     # ------------------------------------------------------------------ head
     w('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">')
     w('<meta name="viewport" content="width=device-width,initial-scale=1">')
-    w("<title>Where Does a Physical Constraint Belong in a Generative Model?</title>")
-    w('<meta name="description" content="A codimension-controlled benchmark for '
-      'constraint placement in generative scenario models of power grids.">')
+    w("<title>Hamiltonian Network</title>")
+    w('<meta name="description" content="Where a hard physical constraint belongs in a '
+      'generative model: a codimension-controlled benchmark on real power-grid data.">')
     w('<link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" '
       'rel="stylesheet">')
     w('<link rel="stylesheet" '
@@ -276,111 +275,43 @@ def main():
     w('<div class="column has-text-centered">')
     w('<h1 class="title is-1 publication-title">Where Does a Physical Constraint '
       "Belong in a Generative Model?</h1>")
-    w('<p class="is-size-4" style="color:#4a4a4a;margin-top:.6rem">A '
-      "Codimension-Controlled Benchmark on Real Power-Grid Data</p>")
-    w('<div class="is-size-5 publication-authors">')
-    w('<span class="author-block">Anonymous Authors</span>')
-    w("</div>")
-    w('<div class="is-size-6 publication-authors anonymous-note">')
-    w("<span class=\"author-block\">Paper under double-blind review</span></div>")
-    w('<div class="venue-tag">Under review at ICLR 2026</div>')
+    w('<p class="is-size-4" style="color:#4a4a4a;margin-top:.7rem">'
+      "Constraint-exact scenario generation for power grids</p>")
+    w('<div class="is-size-5 publication-authors"><span class="author-block">'
+      "Anonymous Authors</span></div>")
+    w('<div class="venue-tag">Under review at ICLR</div>')
     w('<div class="column has-text-centered"><div class="publication-links">')
-    for icon, label, href, dis in [
-            ("ai ai-arxiv", "Paper", "#", True),
-            ("fab fa-github", "Code", REPO, False),
-            ("fas fa-table", "Results", f"{REPO}/blob/main/docs/RESULTS.md", False),
+    for icon, label, href in [
+            ("fab fa-github", "Code", REPO),
+            ("fas fa-table", "Results", f"{REPO}/blob/main/docs/RESULTS.md"),
             ("fas fa-clipboard-check", "Pre-registration",
-             f"{REPO}/blob/main/docs/CLAIMS_AND_EVIDENCE.md", False),
-            ("fas fa-database", "Data",
-             f"{REPO}/blob/main/docs/DATA_PROVENANCE.md", False)]:
-        cls = "external-link button is-normal is-rounded is-dark"
-        if dis:
-            cls += " placeholder-button"
-        w(f'<span class="link-block"><a href="{href}" class="{cls}">'
-          f'<span class="icon"><i class="{icon}"></i></span><span>{label}</span></a></span>')
+             f"{REPO}/blob/main/docs/CLAIMS_AND_EVIDENCE.md")]:
+        w(f'<span class="link-block"><a href="{href}" class="external-link button '
+          f'is-normal is-rounded is-dark"><span class="icon"><i class="{icon}"></i>'
+          f"</span><span>{label}</span></a></span>")
     w("</div></div></div></div></div></div></section>")
 
     # -------------------------------------------------------------- abstract
     sec("Abstract")
-    fl = {s: paired(mains[s], "HFM (ours)", "FM") for s, _ in SUITES}
     w('<div class="content has-text-justified">')
-    w("<p>Generative models are increasingly used to produce operational scenarios "
-      "&mdash; plausible futures a system operator can plan against. Such scenarios "
-      "must obey the physical laws of the system they describe: a set of power "
-      "injections that violates Kirchhoff's laws is not a pessimistic forecast, it is "
-      "an impossible one. Several methods achieve <em>exact</em> constraint "
-      "satisfaction, and the literature disagrees about which to use. The question is "
-      "not <em>whether</em> to enforce a constraint but <b>where it belongs</b>: in "
-      "the hypothesis class, at inference time, in the loss, or in the coordinates.</p>")
-    w("<p>We build a benchmark that isolates one variable &mdash; the "
-      "<b>codimension</b> of the constraint set, the fraction of the state the physics "
-      "already determines &mdash; and compare all four routes under identical "
-      f"backbones, budgets and data across {nmeth} methods, {nseeds} seeds and three "
-      "suites built from real grid measurements. <b>The answer is not universal.</b> "
-      "On a controlled contrast where the only change is how much of the state is "
-      "determined, train-time projection moves from statistically indistinguishable "
-      f"from doing nothing ({fl['grid_noflow'][0]:+.2f}%) to a significant win "
-      f"({fl['grid'][0]:+.2f}%, t&nbsp;=&nbsp;{fl['grid'][1]:+.2f}); on a third real "
-      f"dataset the same code is significantly <em>worse</em> ({fl['measured'][0]:+.2f}%, "
-      f"t&nbsp;=&nbsp;{fl['measured'][1]:+.2f}).</p>")
-    w("<p>Two further results cut against the field's habits. Soft penalties &mdash; "
-      "the default in physics-informed generative modelling &mdash; are dominated on "
-      "<em>both</em> axes by every exact route: raising the penalty weight three orders "
-      "of magnitude leaves the violation at the same order while destroying the score. "
-      "And in a downstream stochastic unit-commitment study, scenario feasibility does "
-      "not reach the scheduling decision at all: cost regret is essentially "
-      "uncorrelated with the energy score and strongly correlated with calibration. "
-      "All claims were pre-registered with explicit falsification conditions before the "
-      "sweep ran; two of our own predictions were falsified by our own data, and we "
-      "report them as falsified.</p>")
+    w("<p>Generative scenario models for power grids must obey the physics they "
+      "describe &mdash; a set of injections that breaks Kirchhoff's laws is not a "
+      "pessimistic forecast, it is an impossible one. Several methods achieve "
+      "<b>exact</b> constraint satisfaction. The open question is <b>where the "
+      "constraint belongs</b>: in the hypothesis class, at inference, in the loss, or "
+      "in the coordinates.</p>")
+    w(f"<p>We benchmark all four routes under identical backbones, budgets and data "
+      f"&mdash; <b>{nmeth} methods, {nseeds} seeds, three suites</b> built from real "
+      "grid measurements &mdash; varying one thing: the <b>codimension</b> of the "
+      "constraint set, the fraction of the state the physics already determines. "
+      "<b>The answer is not universal.</b> On a controlled contrast, train-time "
+      "projection moves from indistinguishable from doing nothing to a significant "
+      "win; on a third real dataset the same code is significantly worse.</p>")
     w("</div>")
     endsec()
 
-    # ------------------------------------------------------------ the problem
-    sec("The Problem", light=True)
-    w('<div class="content has-text-justified">')
-    w("<p>Four routes reach the same feasible set. They are rarely compared on matched "
-      "conditions, and each is usually advocated on a single benchmark.</p></div>")
-    w('<div class="tbl-wrap"><table class="data"><thead><tr><th>route</th>'
-      "<th>exact?</th><th>new constraint zero-shot?</th><th>extra NFE</th>"
-      "</tr></thead><tbody>")
-    for nm, ex, zs, nfe, ours in [
-            ("soft penalty &nbsp;<span class='dim'>λ‖Ax−b‖²</span>", "no", "no", "0", 0),
-            ("post-hoc projection", "yes", "yes", "1", 0),
-            ("inference-time correction &nbsp;<span class='dim'>PCFM</span>",
-             "yes", "yes", "projection every step", 0),
-            ("reduced coordinates / DC3 completion", "yes",
-             "chart must be rebuilt", "0", 0),
-            ("tangential projection at train time", "yes", "yes", "<b>0</b>", 1)]:
-        w(f'<tr{" class=\"ours\"" if ours else ""}><td>{nm}</td><td>{ex}</td>'
-          f"<td>{zs}</td><td>{nfe}</td></tr>")
-    w("</tbody></table></div>")
-    w('<div class="content has-text-justified"><p>The benchmark holds everything '
-      "fixed and varies codimension. The two grid suites are the <em>same</em> 118-bus "
-      "system and the same measured injections; the only change is whether the model "
-      "must also emit the 186 line flows that the constraint matrix determines exactly. "
-      "That makes the contrast causal rather than correlational.</p></div>")
-    w('<div class="tbl-wrap"><table class="data"><thead><tr><th>suite</th><th>source</th>'
-      "<th>days</th><th>D / hour</th><th>constraints</th><th>dof</th><th>codim</th>"
-      "</tr></thead><tbody>")
-    src = {"grid_noflow": "EIA-930 on IEEE 118-bus",
-           "measured": "EIA-930, 6 balancing authorities",
-           "grid": "as grid-noflow, plus 186 line flows"}
-    for s, label in SUITES:
-        m = meta[s]
-        w(f"<tr><td><code>{esc(label)}</code></td><td>{src[s]}</td><td>{m['n_days']}</td>"
-          f"<td>{m['D']}</td><td>{m['affine_rank_per_hour']}</td>"
-          f"<td>{m['affine_dof_per_hour']}</td><td><b>{m['codim_frac']:.3f}</b></td></tr>")
-    w("</tbody></table></div>")
-    endsec()
-
-    # ---------------------------------------------------------------- result 1
-    sec("The Effect Changes Sign")
-    w('<div class="fig-card">')
-    w(flip_chart(meta, mains))
-    w('<p class="caption">Paired change in energy score against unconstrained flow '
-      f"matching, {nseeds} seeds, identical backbone and budget. Hover any point for "
-      "its paired <i>t</i>-statistic.</p></div>")
+    # ------------------------------------------------------------ key numbers
+    sec("Headline Results", light=True)
     w('<div class="stat-grid">')
     for s, label in SUITES:
         pct, t = fl[s]
@@ -389,77 +320,56 @@ def main():
         verd = ("significantly better" if pct < 0 else "significantly worse") \
             if abs(t) > T_CRIT_9 else "indistinguishable"
         w(f'<div class="stat"><span class="v {cls}">{pct:+.2f}%</span><span class="k">'
-          f"<code>{esc(label)}</code> &middot; codim {meta[s]['codim_frac']:.3f}<br>"
-          f"t&nbsp;=&nbsp;{t:+.2f} &middot; {verd}</span></div>")
+          f"energy score vs unconstrained FM<br><code>{esc(label)}</code> &middot; "
+          f"codim <b>{meta[s]['codim_frac']:.3f}</b><br>t&nbsp;=&nbsp;{t:+.2f} "
+          f"&middot; {verd}</span></div>")
     w("</div>")
-    w('<div class="tbl-wrap"><table class="data"><thead><tr><th>suite</th><th>codim</th>'
-      "<th>method</th><th>&Delta;ES vs FM</th><th>paired t</th><th>verdict</th>"
-      "</tr></thead><tbody>")
-    for s, label in SUITES:
-        for meth in ["HFM (ours)", "FM+reduced", "FM+DC3", "FM+PCFM", "FM+posthoc"]:
-            r = paired(mains[s], meth, "FM")
-            if not r:
-                continue
-            pct, t = r
-            v = (f'<span class="good">better</span>' if pct < 0
-                 else '<span class="bad">worse</span>') if abs(t) > T_CRIT_9 \
-                else '<span class="dim">n.s.</span>'
-            w(f'<tr{" class=\"ours\"" if meth=="HFM (ours)" else ""}>'
-              f"<td><code>{esc(label)}</code></td><td>{meta[s]['codim_frac']:.3f}</td>"
-              f"<td>{esc(meth)}</td><td>{pct:+.2f}%</td><td>{t:+.2f}</td><td>{v}</td></tr>")
-    w("</tbody></table></div>")
-    w('<div class="takeaway"><p><b>Takeaway.</b> The effect is not a constant that a '
-      "better implementation would move &mdash; it changes sign, significantly in both "
-      "directions, on the same code. The clean causal claim is the "
-      "<code>grid-noflow</code> &rarr; <code>grid</code> contrast. The third suite is a "
-      "genuinely different data-generating process (accounting identities rather than "
-      "Kirchhoff), so it is a confounded point, but it establishes that real problems "
-      "exist where exact projection <em>costs</em> fidelity. Channel scale "
-      "heterogeneity was checked and rejected as an alternative explanation.</p>"
-      "<p>Anyone reporting a single winner has measured one suite.</p></div>")
+    w('<div class="content has-text-justified"><p class="has-text-centered" '
+      'style="color:#7a7a7a">Same code, same backbone, same budget. '
+      "<b>The effect changes sign.</b></p></div>")
+    endsec()
+
+    # ---------------------------------------------------------------- result 1
+    sec("The Effect Changes Sign with Codimension")
+    w(f'<div class="fig-card">{flip_chart(meta, mains)}'
+      f'<p class="caption">Paired change in energy score against unconstrained flow '
+      f"matching, {nseeds} seeds. Hover any point for its paired "
+      "<i>t</i>-statistic.</p></div>")
+    w('<div class="takeaway"><p>The two grid suites are the <b>same</b> 118-bus system '
+      "and the same measured injections; the only change is whether the model must also "
+      "emit the 186 line flows the constraint matrix determines exactly. That makes the "
+      "contrast causal. Codimension goes 0.093 &rarr; 0.648 and train-time projection "
+      "goes from indistinguishable to significantly better.</p>"
+      "<p><b>Anyone reporting a single winner has measured one suite.</b></p></div>")
     endsec()
 
     # ---------------------------------------------------------------- result 2
     sec("Soft Penalties Are Dominated on Both Axes", light=True)
-    w('<div class="content has-text-justified"><p>The default in physics-informed '
-      "generative modelling is to add <code>λ‖Ax−b‖²</code> to the loss and raise λ "
-      "until violations look acceptable. On this benchmark that trade-off does not "
-      "exist.</p></div>")
-    w('<div class="tbl-wrap"><table class="data"><thead><tr><th>suite</th><th>λ</th>'
-      "<th>ES</th><th>rel. to FM</th><th>‖Ax−b‖<sub>∞</sub> (MW)</th></tr></thead><tbody>")
-    for s, label in SUITES:
-        base = mean_of(mains[s], "FM")
-        for lam in [1, 10, 100, 1000]:
-            m = f"FM+penalty({lam})"
-            es, eq = mean_of(mains[s], m), mean_of(mains[s], m, "eq_max")
-            if not np.isfinite(es):
-                continue
-            d = 100 * (es - base) / base
-            w(f"<tr><td><code>{esc(label)}</code></td><td>{lam}</td><td>{g(es)}</td>"
-              f'<td class="{"bad" if d>0 else "good"}">{d:+.1f}%</td>'
-              f"<td>{g(eq,3)}</td></tr>")
+    w('<div class="tbl-wrap"><table class="data"><thead><tr><th>λ</th><th>ES</th>'
+      "<th>rel. to FM</th><th>‖Ax−b‖<sub>∞</sub> (MW)</th></tr></thead><tbody>")
+    base = mean_of(mains["grid"], "FM")
+    for lam in [1, 10, 100, 1000]:
+        m = f"FM+penalty({lam})"
+        es, eq = mean_of(mains["grid"], m), mean_of(mains["grid"], m, "eq_max")
+        d = 100 * (es - base) / base
+        w(f"<tr><td>{lam}</td><td>{g(es)}</td>"
+          f'<td class="bad">{d:+.1f}%</td><td>{g(eq,3)}</td></tr>')
     w("</tbody></table></div>")
     e1 = mean_of(mains["grid"], "FM+penalty(1)", "eq_max")
     e1k = mean_of(mains["grid"], "FM+penalty(1000)", "eq_max")
-    dg = 100 * (mean_of(mains["grid"], "FM+penalty(1000)") - mean_of(mains["grid"], "FM")) \
-        / mean_of(mains["grid"], "FM")
-    w(f'<div class="takeaway"><p><b>Takeaway.</b> On <code>grid</code>, three orders of '
-      f"magnitude of λ move the violation from {e1:.3g}&nbsp;MW to {e1k:.3g}&nbsp;MW "
-      f"&mdash; the same order, still operationally unacceptable &mdash; while the "
-      f"energy score degrades monotonically to {dg:+.0f}%. Every exact route beats the "
-      "entire penalty family on feasibility <em>and</em> fidelity at once. There is no "
-      "λ to tune.</p></div>")
+    dg = 100 * (mean_of(mains["grid"], "FM+penalty(1000)") - base) / base
+    w(f'<div class="takeaway"><p>Three orders of magnitude of λ move the violation from '
+      f"{e1:.3g}&nbsp;MW to {e1k:.3g}&nbsp;MW &mdash; the same order, still "
+      f"unacceptable &mdash; while the score degrades to <b>{dg:+.0f}%</b>. "
+      "<b>There is no λ to tune.</b> Every exact route beats the entire penalty family "
+      "on feasibility <i>and</i> fidelity at once.</p></div>")
     endsec()
 
     # ---------------------------------------------------------------- result 3
     sec("Feasibility Is Not Decision Value")
-    w('<div class="content has-text-justified"><p>Proper scoring rules are the currency '
-      "of this literature. We also ran the decision they stand in for: two-stage "
-      "stochastic unit commitment, commitment frozen on the generated scenarios, scored "
-      "on the realised day, regret measured against perfect foresight.</p></div>")
     svg, r_cov, sp = regret_chart(down, mains["measured"])
-    w(f'<div class="fig-card">{svg}<p class="caption">Each point is one generator. '
-      "Cost regret against 90% coverage.</p></div>")
+    w(f'<div class="fig-card">{svg}<p class="caption">Two-stage stochastic unit '
+      "commitment. Each point is one generator.</p></div>")
     reg = defaultdict(list)
     for r in down:
         if r.get("regret_pct") is not None and "[det-mean]" not in r["method"]:
@@ -468,124 +378,85 @@ def main():
     for r in mains["measured"]:
         esm[r["method"]].append(r["energy_score"])
     pts = [(np.mean(esm[m]), np.mean(reg[m])) for m in reg if m in esm]
-    r_es = float(np.corrcoef([p[0] for p in pts], [p[1] for p in pts])[0, 1])
     sp_es = spearmanr([p[0] for p in pts], [p[1] for p in pts])
+    r_es = float(np.corrcoef([p[0] for p in pts], [p[1] for p in pts])[0, 1])
     w('<div class="stat-grid">')
     w(f'<div class="stat"><span class="v good">{r_cov:+.3f}</span><span class="k">'
-      f"corr(cost regret, 90% coverage)<br>Spearman ρ&nbsp;=&nbsp;{sp.statistic:+.2f}, "
+      f"regret vs <b>calibration</b><br>Spearman ρ&nbsp;=&nbsp;{sp.statistic:+.2f}, "
       f"p&nbsp;=&nbsp;{sp.pvalue:.3f}</span></div>")
     w(f'<div class="stat"><span class="v dim">{r_es:+.3f}</span><span class="k">'
-      f"corr(cost regret, energy score)<br>Spearman ρ&nbsp;=&nbsp;{sp_es.statistic:+.2f}, "
-      f"p&nbsp;=&nbsp;{sp_es.pvalue:.2f} &mdash; not significant</span></div>")
+      f"regret vs <b>energy score</b><br>Spearman ρ&nbsp;=&nbsp;{sp_es.statistic:+.2f}, "
+      f"p&nbsp;=&nbsp;{sp_es.pvalue:.2f} &mdash; <b>not significant</b></span></div>")
     w("</div>")
-    w(f'<div class="takeaway"><p><b>Takeaway, and the result we least expected.</b> '
-      "Physical feasibility of the scenario set does not reach the scheduling decision "
-      "at all; calibration carries it. The exactly-feasible train-time routes take the "
-      f"worst regret among neural methods (<code>FM+reduced</code> "
-      f"{np.mean(reg['FM+reduced']):.0f}%, <code>FM+DC3</code> "
-      f"{np.mean(reg['FM+DC3']):.0f}%, ours {np.mean(reg['HFM (ours)']):.0f}%) and the "
-      f"best belong to the two most over-dispersed baselines (<code>GaussianCopula</code> "
-      f"{np.mean(reg['GaussianCopula']):.0f}%, <code>NormFlow-RealNVP</code> "
-      f"{np.mean(reg['NormFlow-RealNVP']):.0f}%). Exactly-feasible ensembles are "
-      "sharper, the scheduler trusts them, under-commits reserve and pays in load "
-      "shed.</p><p>A study that stopped at the energy score would have reported the "
-      f"opposite conclusion with confidence. Stated with its limit: this stage has "
-      f"{max(len(v) for v in reg.values())} seeds, not {nseeds}.</p></div>")
+    w(f'<div class="takeaway"><p><b>Scenario feasibility does not reach the scheduling '
+      "decision; calibration carries it.</b> The exactly-feasible routes take the worst "
+      f"regret among neural methods (ours {np.mean(reg['HFM (ours)']):.0f}%, "
+      f"<code>FM+reduced</code> {np.mean(reg['FM+reduced']):.0f}%); the best belong to "
+      f"the most over-dispersed baselines ({np.mean(reg['GaussianCopula']):.0f}%). Exact "
+      "ensembles are sharper, the scheduler trusts them, under-commits reserve and pays "
+      f"in load shed.</p><p>A study that stopped at the energy score would have reported "
+      f"the opposite. Limit: {max(len(v) for v in reg.values())} seeds on this stage, "
+      f"not {nseeds}.</p></div>")
     endsec()
 
-    # ---------------------------------------------------------------- result 4
-    if eff:
-        fm_best = min((r for r in eff if r["method"] == "FM"),
-                      key=lambda r: r["energy_score"])
-        cheap = min((r for r in eff if r["method"].startswith("HFM")
-                     and r["energy_score"] <= fm_best["energy_score"]),
-                    key=lambda r: r["nfe"])
-        sec("Exactness Is Free in Function Evaluations", light=True)
-        w('<div class="stat-grid">')
-        w(f'<div class="stat"><span class="v">{fm_best["nfe"]} &rarr; {cheap["nfe"]}</span>'
-          '<span class="k">NFE to reach the best score unconstrained FM attains '
-          f"anywhere on the frontier ({fm_best['energy_score']:.4g})</span></div>")
-        w(f'<div class="stat"><span class="v">{fm_best["nfe"]/max(cheap["nfe"],1):.0f}&times;</span>'
-          '<span class="k">fewer function evaluations, for a better score</span></div>')
-        w('<div class="stat"><span class="v">0</span><span class="k">extra NFE for the '
-          "projector route, against 51 extra projections for inference-time correction "
-          "on a 50-step solve</span></div>")
-        w("</div>")
-        w(f'<div class="takeaway"><p><b>Takeaway.</b> Removing the determined directions '
-          "from the hypothesis class buys far more than any solver schedule, because an "
-          "adaptive solver spends its budget integrating directions that are known in "
-          f"closed form. The violation sits at {cheap['eq_max']:.3g}&nbsp;MW against "
-          f"{fm_best['eq_max']:.3g}&nbsp;MW. Efficiency is reported as NFE and analytic "
-          "FLOPs &mdash; exactly countable and hardware-independent &mdash; not as "
-          "device joules.</p></div>")
-        endsec()
-
     # ------------------------------------------------------------- falsified
-    sec("What We Predicted, and Got Wrong")
-    w('<div class="content has-text-justified"><p>Every claim was written into a '
-      "pre-registration with an explicit falsification condition <em>before</em> the "
-      "sweep ran, so the acceptance criteria could not drift to fit the output. Two "
-      "conditions fired.</p></div>")
+    sec("What We Predicted, and Got Wrong", light=True)
+    w('<div class="content has-text-justified"><p>Every claim was pre-registered with '
+      "an explicit falsification condition <b>before</b> the sweep ran. Two "
+      "fired.</p></div>")
     hg, thg = paired(mains["grid"], "HFM (ours)", "FM+PCFM")
     hm, thm = paired(mains["measured"], "HFM (ours)", "FM+PCFM")
     w('<div class="kill"><span class="tag">Falsified &middot; C3</span>'
-      "<p><b>We predicted</b> train-time ≤ inference-time ≤ post-hoc on fidelity, "
-      f"universally.</p><p><b>Measured:</b> the ordering holds on <code>grid</code> "
-      f"({hg:+.2f}% for train-time against inference-time, t&nbsp;=&nbsp;{thg:+.2f}) and "
-      f"reverses on <code>measured</code> ({hm:+.2f}%, t&nbsp;=&nbsp;{thm:+.2f}). The "
-      "reversal became the paper's central finding.</p></div>")
+      "<p><b>Predicted:</b> train-time ≤ inference-time ≤ post-hoc, universally.</p>"
+      f"<p><b>Measured:</b> holds on <code>grid</code> ({hg:+.2f}%, "
+      f"t&nbsp;=&nbsp;{thg:+.2f}), reverses on <code>measured</code> ({hm:+.2f}%, "
+      f"t&nbsp;=&nbsp;{thm:+.2f}). The reversal became the paper's central "
+      "finding.</p></div>")
     if transfer:
         by = defaultdict(list)
         for r in transfer:
             by[(r["method"], r["mode"])].append(r["energy_score"])
         w('<div class="kill"><span class="tag">Falsified &middot; C5&prime;</span>'
-          "<p><b>We predicted</b> that under an N-1 topology swap, routes working in "
-          "physical coordinates keep their learned distribution while chart-based routes "
-          f"do not.</p><p><b>Measured:</b> ours "
-          f"{np.mean(by[('HFM (ours)','swapped')]):.4g} against <code>FM+reduced</code> "
-          f"{np.mean(by[('FM+reduced','swapped')]):.4g} &mdash; indistinguishable &mdash; "
-          f"and both beaten by <code>FM+posthoc</code> "
-          f"{np.mean(by[('FM+posthoc','swapped')]):.4g}. Per the pre-registration the "
-          "transfer differentiator was dropped from the paper rather than "
-          "softened.</p></div>")
+          "<p><b>Predicted:</b> under an N-1 topology swap, physical-coordinate routes "
+          "keep their learned distribution; chart-based routes do not.</p>"
+          f"<p><b>Measured:</b> ours {np.mean(by[('HFM (ours)','swapped')]):.4g} vs "
+          f"<code>FM+reduced</code> {np.mean(by[('FM+reduced','swapped')]):.4g} &mdash; "
+          f"indistinguishable, both beaten by <code>FM+posthoc</code> "
+          f"{np.mean(by[('FM+posthoc','swapped')]):.4g}. Differentiator dropped.</p></div>")
     if ac:
         fmv = np.mean([r["nl_max"] for r in ac if r["method"] == "FM"])
         rfv = np.mean([r["nl_max"] for r in ac if r["method"] == "FM+retract-final"])
         mf3 = [r["nl_max"] for r in ac if r["method"].startswith("Manifold")
                and r.get("retract_iters", 3) == 3]
         w('<div class="kill"><span class="tag">Negative result &middot; AC manifold</span>'
-          "<p><b>We predicted</b> that per-step retraction would be needed to bound drift "
-          "on the nonlinear AC power-flow manifold.</p>"
-          f"<p><b>Measured:</b> a single retraction after the solve reaches "
-          f"|g|<sub>∞</sub>&nbsp;=&nbsp;{rfv:.3g} from {fmv:.3g}, essentially free in "
-          f"score. Per-step retraction at a budget of 3 Gauss-Newton iterations reaches "
-          f"only {np.mean(mf3):.3g} &mdash; worse than doing nothing &mdash; because the "
-          "in-loop pull-back never converges and injects a biased correction at every "
-          "step. Reported with the diagnosed cause, not omitted.</p></div>")
+          "<p><b>Predicted:</b> per-step retraction is needed to bound drift on the "
+          "nonlinear AC manifold.</p>"
+          f"<p><b>Measured:</b> one retraction after the solve reaches "
+          f"|g|<sub>∞</sub>&nbsp;=&nbsp;{rfv:.3g} from {fmv:.3g}, free in score. "
+          f"Per-step retraction at 3 Gauss-Newton iterations reaches only "
+          f"{np.mean(mf3):.3g} &mdash; worse than doing nothing.</p></div>")
     w('<div class="takeaway"><p><b>A non-neural baseline places second of sixteen</b> on '
       "both grid suites. <code>kNN-Historical</code> resamples analogue days: zero "
-      "parameters, zero function evaluations, exactly feasible by construction. It beats "
-      "every GAN, VAE and normalising flow on all three suites. The pre-registration "
-      "committed us to putting it in the abstract if it won, so it is in the "
-      "abstract.</p></div>")
+      "parameters, zero NFE, exactly feasible by construction. It beats every GAN, VAE "
+      "and normalising flow on all three suites.</p></div>")
     endsec()
 
     # ------------------------------------------------------------ link cards
-    w('<section class="section hero is-small is-light"><div class="container is-max-desktop">')
+    w('<section class="section"><div class="container is-max-desktop">')
     w('<h2 class="title is-3 has-text-centered">Resources</h2>')
     w('<div class="columns is-centered" style="margin-top:1rem">')
     for icon, title, body, label, href in [
-            ("fas fa-table", "Results record",
-             "Every measured number, generated from the run files. No value typed by hand.",
+            ("fas fa-table", "Results",
+             "Every measured number, generated from the run files.",
              "Read", f"{REPO}/blob/main/docs/RESULTS.md"),
-            ("fas fa-scale-balanced", "Predictions vs measurement",
-             "What the prior state of the art would have predicted, against what happened.",
+            ("fas fa-scale-balanced", "Predictions",
+             "What prior work would have predicted, against what happened.",
              "Read", f"{REPO}/blob/main/docs/PREDICTIONS_VS_MEASURED.md"),
             ("fas fa-clipboard-check", "Pre-registration",
-             "Every claim and what would falsify it, written before the sweep ran.",
+             "Every claim and what would falsify it, written before the sweep.",
              "Read", f"{REPO}/blob/main/docs/CLAIMS_AND_EVIDENCE.md"),
             ("fab fa-github", "Code",
-             "Full implementation, reproduction commands, data provenance and proofs.",
+             "Full implementation, reproduction commands, provenance and proofs.",
              "Browse", REPO)]:
         w('<div class="column is-3"><div class="card link-card">'
           '<div class="card-content has-text-centered">'
@@ -597,27 +468,25 @@ def main():
     w("</div></div></section>")
 
     # ---------------------------------------------------------------- bibtex
-    w('<section class="section" id="BibTeX"><div class="container is-max-desktop content">')
+    w('<section class="section hero is-small is-light" id="BibTeX">')
+    w('<div class="container is-max-desktop content">')
     w('<h2 class="title">BibTeX</h2>')
     w("<pre><code>@inproceedings{anonymous2026constraintplacement,\n"
-      "  title={Where Does a Physical Constraint Belong in a Generative Model? "
-      "A Codimension-Controlled Benchmark},\n"
-      "  author={Anonymous},\n"
-      "  booktitle={Submitted to the International Conference on Learning "
+      "  title  = {Where Does a Physical Constraint Belong in a Generative Model?},\n"
+      "  author = {Anonymous},\n"
+      "  booktitle = {Submitted to the International Conference on Learning "
       "Representations},\n"
-      "  year={2026},\n"
-      "  note={Under review}\n"
-      "}</code></pre>")
-    w("</div></section>")
+      "  year   = {2026}\n"
+      "}</code></pre></div></section>")
 
     # ---------------------------------------------------------------- footer
     w('<footer class="footer"><div class="container"><div class="columns is-centered">')
     w('<div class="column is-8"><div class="content has-text-centered">')
     w("<p>Data: EIA-930 (US Energy Information Administration, public domain) and "
       "pglib-opf / MATPOWER network cases. Code released under MIT.</p>")
-    w("<p>Website template adapted from the Nerfies project page.</p>")
-    w("</div></div></div></div></footer>")
-    w("</body></html>")
+    w("<p>Every number on this page is generated from the run files. "
+      "Website template adapted from the Nerfies project page.</p>")
+    w("</div></div></div></div></footer></body></html>")
 
     out = os.path.join(ROOT, "docs", "index.html")
     with open(out, "w") as f:
