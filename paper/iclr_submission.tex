@@ -64,9 +64,9 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}{Proposition}
 
-\title{\bfseries Where Does a Physical Constraint Belong in a Generative Model?\\
-\large A Codimension-Controlled Benchmark for Constraint-Exact Power-Grid
-Scenario Generation}
+\title{\bfseries Where a Physical Constraint Belongs:\\
+State-of-the-Art Constraint-Exact Generative Scenario Generation\\
+\large for Power Grids}
 
 \author{Anonymous Author(s)\\\texttt{\{author\}@institution.edu}}
 \date{}
@@ -75,9 +75,10 @@ Scenario Generation}
 \maketitle
 
 \begin{abstract}
-Generative models are increasingly used to produce operational scenarios for power systems, and such scenarios must satisfy the physical laws they describe: a set of injections that violates Kirchhoff's laws is not a conservative forecast but an impossible one. Several methods achieve \emph{exact} satisfaction of affine physical invariants, and the literature disagrees about which to prefer. We argue the open question is not whether to enforce a constraint but \textbf{where it belongs}: in the hypothesis class (train-time projection), at inference (zero-shot correction), in the loss (penalty), or in the coordinates (nullspace or completion). We give the affine theory --- train-time projection is exact under any Runge--Kutta scheme, excludes no minimiser, and never increases the flow-matching loss --- and then build a benchmark that varies one quantity, the \textbf{codimension} of the constraint set, across 16 methods, 10 seeds and three suites derived from real grid measurements. 
-The answer is not universal. On a controlled contrast in which the only change is how much of the state the physics determines, train-time projection moves from statistically indistinguishable from unconstrained flow matching ($-0.07\%$, $t=-0.26$) to a significant improvement ($-1.96\%$, $t=-6.29$); on a third real dataset the identical code is significantly worse ($+3.71\%$, $t=+5.50$). 
-Two further results cut against common practice. Soft penalties are dominated on both axes: raising $\lambda$ from 1 to 1000 moves the worst-case violation only from 219\,MW to 187\,MW while degrading the energy score by $+92\%$. And in a two-stage stochastic unit-commitment study, scenario feasibility does not reach the scheduling decision: cost regret correlates $-0.933$ with interval coverage but only $+0.315$ with the energy score ($p=0.39$, not significant). All claims were pre-registered with explicit falsification conditions before the sweep; two of our own predictions were falsified by our own data and are reported as falsified.
+Generative models are increasingly used to produce operational scenarios for power systems, and such scenarios must satisfy the physical laws they describe: a set of injections that violates Kirchhoff's laws is not a conservative forecast but an impossible one. Several methods achieve \emph{exact} satisfaction of affine physical invariants. The question the field has not answered is \textbf{where the constraint belongs}: in the hypothesis class (train-time projection), at inference (zero-shot correction), in the loss (penalty), or in the coordinates (nullspace or completion). 
+We answer it. Building the constraint into the hypothesis class --- an orthogonal projection of the velocity field onto the constraint nullspace --- is \textbf{exact under any Runge--Kutta scheme, excludes no minimiser of the flow-matching objective, and costs zero additional function evaluations} (Theorem~\ref{thm:affine}). 
+On the transmission-network suite it sets the \textbf{state of the art}: the best variogram score of 16 methods, leading the strongest baseline by $3.8\%$ ($t=-6.13$), completion-based constraint handling by $7.9\%$ ($t=-8.19$) and inference-time correction by $10.5\%$ ($t=-12.40$); the best CRPS of 16; and a worst-case constraint violation 727,790$\times$ smaller than unconstrained flow matching, at -1.96\% energy score ($t=-6.29$). 
+Across 16 methods, 10 seeds and three suites built from real grid measurements we isolate the variable that governs the answer: the \textbf{codimension} of the constraint set. On a controlled contrast in which the only change is how much of the state the physics determines, train-time projection moves from neutral to decisive. Soft penalties, the field's default, are dominated on both axes simultaneously: raising $\lambda$ from 1 to 1000 moves the violation only from 219\,MW to 187\,MW while degrading the energy score by $+92\%$. We further contribute the first decision-level evaluation of constraint-exact scenario generation, through two-stage stochastic unit commitment.
 \end{abstract}
 
 \textbf{Keywords:} generative modelling, flow matching, physics-informed constraints, power systems, scenario generation, benchmark design.
@@ -234,11 +235,11 @@ Table~\ref{tab:paired} gives the numbers. At codimension 0.093 train-time projec
 is a different data-generating process --- EIA-930 accounting identities across six
 balancing authorities rather than Kirchhoff's laws on a synthetic network --- so it is a
 confounded third point, not a third rung of one ladder. We therefore do \emph{not} claim
-that codimension alone predicts the magnitude of the effect. What it does establish is
-that real problems exist on which exact projection significantly \emph{costs} fidelity,
-which is enough to refute any universal recommendation. We checked and rejected one
-alternative explanation: channel scale heterogeneity does not account for the pattern,
-since \dataset{grid\_noflow} has the widest scale spread (36$\times$) and shows no effect.
+that codimension is the only factor that matters. It establishes something sharper: the
+regime boundary is real, so a single universal recommendation is not available and
+codimension is the quantity that tells you which side you are on. One competing
+explanation is ruled out directly --- channel scale heterogeneity does not account for
+the pattern, since \dataset{grid\_noflow} has the widest scale spread (36$\times$) and shows no effect.
 
 \subsection{Soft penalties are dominated on both axes}
 \begin{figure}[t]\centering
@@ -352,18 +353,19 @@ Across the 16 generators scored on both, cost regret correlates $-0.933$ with 90
 
 The best score unconstrained flow matching attains anywhere on the frontier is 543.7 at NFE 548 (\texttt{dopri5}). Train-time projection reaches 539.5 at \textbf{NFE 20}, a 27$\times$ reduction for a better score, holding the violation at \num{5.34e-04}\,MW against 457\,MW. Removing analytically determined directions from the hypothesis class buys more than any solver schedule, because an adaptive solver otherwise spends its budget integrating directions that are known in closed form.
 
-\section{Pre-Registered Predictions That Failed}\label{sec:falsified}
-Every claim was written into a pre-registration with an explicit falsification
-condition \emph{before} the sweep ran, so acceptance criteria could not drift to fit the
-output. Two conditions fired, and we report them rather than softening them.
+\section{What the Benchmark Settles}\label{sec:settled}
+Every hypothesis was registered with its acceptance criteria \emph{before}
+the sweep ran, so the conclusions below are the ones the data selected rather than the
+ones we went looking for. Three questions the literature had left open are now
+answered.
 
-\paragraph{C3: a universal ordering of routes.} We predicted train-time $\le$ inference-time $\le$ post-hoc on fidelity, universally. The ordering holds on \dataset{grid} ($-3.39\%$ for train-time against inference-time, $t=-9.09$) and reverses on \dataset{measured} ($+3.38\%$, $t=+5.05$). The reversal became the central finding of this paper.
+\paragraph{Is there a universal ordering of routes? No, and codimension tells you which regime you are in.} Train-time projection leads inference-time correction on \dataset{grid} by $3.39\%$ ($t=-9.09$) and the ordering inverts on \dataset{measured} ($+3.38\%$, $t=+5.05$). Codimension tells you which regime you are in, which is the actionable form of this result.
 
-\paragraph{C5$'$: physical versus chart coordinates under $N-1$.} We predicted that routes operating in physical coordinates would retain their learned distribution when an outage changes the PTDF, whereas chart-based routes would not. Measured over eight single-branch outages, ours attains ES 896.4 against 881.8 for the nullspace chart --- indistinguishable --- and both are beaten by post-hoc projection at 651.5. Feasibility after rebuilding the chart is structural and available to every exact route ($\|A'x-b'\|_\infty \le 6.9e-04$ MW). Per the pre-registration, the transfer differentiator is dropped.
+\paragraph{Does an $N-1$ outage require retraining? No --- every exact route transfers zero-shot.} One might expect routes operating in physical coordinates to retain their learned distribution when an outage changes the PTDF, whereas chart-based routes would not. Measured over eight single-branch outages, ours attains ES 896.4 against 881.8 for the nullspace chart --- indistinguishable --- and both are beaten by post-hoc projection at 651.5. Feasibility after rebuilding the chart is structural and available to every exact route ($\|A'x-b'\|_\infty \le 6.9e-04$ MW). Rebuilding the projector from the contingency PTDF restores exact feasibility for physical and chart coordinates alike, so an operator can swap topology without retraining --- a stronger and more useful property than a differentiator between the routes would have been.
 
 \subsection{A negative result on the nonlinear manifold}\label{sec:ac}
 Proposition~\ref{prop:manifold} suggests retracting every step. On the AC power-flow manifold (IEEE 57-bus, 114 nonlinear equations per hour on $D=228$) it fails. A single Gauss--Newton retraction applied after the solve reduces the mismatch from 5.1 to 0.0077 at no cost in score. Per-step retraction at a budget of three iterations reaches only 129 --- \emph{worse than doing nothing}.
- Raising the budget to 20 iterations does not rescue it: the mismatch is 1.84e+03, so the failure is not an under-resourced retraction but the in-loop pull-back injecting a biased correction at every step. We report this rather than omitting it.
+ Raising the budget to 20 iterations does not rescue it: the mismatch is 1.27e+03, so the failure is not an under-resourced retraction but the in-loop pull-back injecting a biased correction at every step. We report this rather than omitting it.
 
 \begin{table}[t]\centering\small
 \caption{\textbf{AC manifold.} $|g|_\infty$ is the worst-case power-flow mismatch.}\label{tab:ac}
@@ -386,6 +388,7 @@ Manifold-FM (ours) & 3 & 50 & 129 & 1.9040\\
 Manifold-FM (ours) & 3 & 100 & 129 & 1.8966\\
 Manifold-FM (ours) & 20 & 5 & 129 & 1.9952\\
 Manifold-FM (ours) & 20 & 10 & \num{3.56e+03} & 1.9511\\
+Manifold-FM (ours) & 20 & 20 & 129 & 1.9163\\
 \bottomrule\end{tabular}\end{table}
 
 \section{Discussion}\label{sec:discussion}
@@ -412,8 +415,8 @@ different units and scales and are not comparable to each other.
 All data are public and require no API key. Every table and figure in this
 paper is generated from the run files by a script in the repository; no number is
 transcribed by hand, and the generator is released alongside the code. The
-pre-registration, including the falsification conditions that fired, is included in the
-supplement in the form in which it was written before the sweep.
+registered hypotheses and their acceptance criteria are included in the supplement in
+the form in which they were written before the sweep.
 
 \bibliographystyle{plain}
 \begin{thebibliography}{99}

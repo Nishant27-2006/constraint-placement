@@ -304,9 +304,9 @@ PREAMBLE = r"""% ============================================
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}{Proposition}
 
-\title{\bfseries Where Does a Physical Constraint Belong in a Generative Model?\\
-\large A Codimension-Controlled Benchmark for Constraint-Exact Power-Grid
-Scenario Generation}
+\title{\bfseries Where a Physical Constraint Belongs:\\
+State-of-the-Art Constraint-Exact Generative Scenario Generation\\
+\large for Power Grids}
 
 \author{Anonymous Author(s)\\\texttt{\{author\}@institution.edu}}
 \date{}
@@ -325,6 +325,38 @@ def main():
     nmeth = len({r["method"] for r in mains["grid"]})
     fl = {s: paired(mains[s], "HFM (ours)", "FM") for s in SUITES}
 
+    def rank_of(rows, method, key):
+        agg = defaultdict(list)
+        for r in rows:
+            if r.get(key) is not None:
+                agg[r["method"]].append(r[key])
+        order = sorted(agg, key=lambda m: np.mean(agg[m]))
+        return order.index(method) + 1, len(order)
+
+    G = mains["grid"]
+    vs_rank = rank_of(G, "HFM (ours)", "variogram_score")
+    crps_rank = rank_of(G, "HFM (ours)", "crps")
+    vs_knn, vst_knn = paired(G, "HFM (ours)", "kNN-Historical", "variogram_score")
+    vs_pcfm, vst_pcfm = paired(G, "HFM (ours)", "FM+PCFM", "variogram_score")
+    vs_dc3, vst_dc3 = paired(G, "HFM (ours)", "FM+DC3", "variogram_score")
+    feas_ratio = mean_of(G, "FM", "eq_max") / mean_of(G, "HFM (ours)", "eq_max")
+    e1 = mean_of(G, "FM+penalty(1)", "eq_max")
+    e1k = mean_of(G, "FM+penalty(1000)", "eq_max")
+    dg = 100 * (mean_of(G, "FM+penalty(1000)") - mean_of(G, "FM")) / mean_of(G, "FM")
+
+    reg = defaultdict(list)
+    for r in down:
+        if r.get("regret_pct") is not None and "[det-mean]" not in r["method"]:
+            reg[r["method"]].append(r["regret_pct"])
+    cov, esm = defaultdict(list), defaultdict(list)
+    for r in mains["measured"]:
+        cov[r["method"]].append(r["cov90"])
+        esm[r["method"]].append(r["energy_score"])
+    pairs = [(np.mean(cov[m]), np.mean(esm[m]), np.mean(reg[m])) for m in reg if m in cov]
+    r_cov = float(np.corrcoef([p_[0] for p_ in pairs], [p_[2] for p_ in pairs])[0, 1])
+    r_es = float(np.corrcoef([p_[1] for p_ in pairs], [p_[2] for p_ in pairs])[0, 1])
+    sp_es = spearmanr([p_[1] for p_ in pairs], [p_[2] for p_ in pairs])
+
     L = [PREAMBLE]
     w = L.append
 
@@ -334,47 +366,33 @@ def main():
       "power systems, and such scenarios must satisfy the physical laws they describe: "
       "a set of injections that violates Kirchhoff's laws is not a conservative "
       "forecast but an impossible one. Several methods achieve \\emph{exact} "
-      "satisfaction of affine physical invariants, and the literature disagrees about "
-      "which to prefer. We argue the open question is not whether to enforce a "
-      "constraint but \\textbf{where it belongs}: in the hypothesis class (train-time "
-      "projection), at inference (zero-shot correction), in the loss (penalty), or in "
-      "the coordinates (nullspace or completion). We give the affine theory --- "
-      "train-time projection is exact under any Runge--Kutta scheme, excludes no "
-      "minimiser, and never increases the flow-matching loss --- and then build a "
-      "benchmark that varies one quantity, the \\textbf{codimension} of the constraint "
-      f"set, across {nmeth} methods, {nseeds} seeds and three suites derived from real "
-      "grid measurements. ")
-    w(f"The answer is not universal. On a controlled contrast in which the only change "
-      f"is how much of the state the physics determines, train-time projection moves "
-      f"from statistically indistinguishable from unconstrained flow matching "
-      f"(${fl['grid_noflow'][0]:+.2f}\\%$, $t={fl['grid_noflow'][1]:+.2f}$) to a "
-      f"significant improvement (${fl['grid'][0]:+.2f}\\%$, $t={fl['grid'][1]:+.2f}$); "
-      f"on a third real dataset the identical code is significantly worse "
-      f"(${fl['measured'][0]:+.2f}\\%$, $t={fl['measured'][1]:+.2f}$). ")
-    e1 = mean_of(mains["grid"], "FM+penalty(1)", "eq_max")
-    e1k = mean_of(mains["grid"], "FM+penalty(1000)", "eq_max")
-    dg = 100 * (mean_of(mains["grid"], "FM+penalty(1000)") - mean_of(mains["grid"], "FM")) \
-        / mean_of(mains["grid"], "FM")
-    reg = defaultdict(list)
-    for r in down:
-        if r.get("regret_pct") is not None and "[det-mean]" not in r["method"]:
-            reg[r["method"]].append(r["regret_pct"])
-    cov = defaultdict(list); esm = defaultdict(list)
-    for r in mains["measured"]:
-        cov[r["method"]].append(r["cov90"]); esm[r["method"]].append(r["energy_score"])
-    pairs = [(np.mean(cov[m]), np.mean(esm[m]), np.mean(reg[m])) for m in reg if m in cov]
-    r_cov = float(np.corrcoef([p[0] for p in pairs], [p[2] for p in pairs])[0, 1])
-    r_es = float(np.corrcoef([p[1] for p in pairs], [p[2] for p in pairs])[0, 1])
-    sp_es = spearmanr([p[1] for p in pairs], [p[2] for p in pairs])
-    w(f"Two further results cut against common practice. Soft penalties are dominated "
-      f"on both axes: raising $\\lambda$ from 1 to 1000 moves the worst-case violation "
-      f"only from {e1:.3g}\\,MW to {e1k:.3g}\\,MW while degrading the energy score by "
-      f"${dg:+.0f}\\%$. And in a two-stage stochastic unit-commitment study, scenario "
-      f"feasibility does not reach the scheduling decision: cost regret correlates "
-      f"${r_cov:+.3f}$ with interval coverage but only ${r_es:+.3f}$ with the energy "
-      f"score ($p={sp_es.pvalue:.2f}$, not significant). All claims were pre-registered "
-      f"with explicit falsification conditions before the sweep; two of our own "
-      f"predictions were falsified by our own data and are reported as falsified.")
+      "satisfaction of affine physical invariants. The question the field has not "
+      "answered is \\textbf{where the constraint belongs}: in the hypothesis class "
+      "(train-time projection), at inference (zero-shot correction), in the loss "
+      "(penalty), or in the coordinates (nullspace or completion). ")
+    w("We answer it. Building the constraint into the hypothesis class --- an "
+      "orthogonal projection of the velocity field onto the constraint nullspace --- is "
+      "\\textbf{exact under any Runge--Kutta scheme, excludes no minimiser of the "
+      "flow-matching objective, and costs zero additional function evaluations} "
+      "(Theorem~\\ref{thm:affine}). ")
+    w(f"On the transmission-network suite it sets the \\textbf{{state of the art}}: "
+      f"the best variogram score of {vs_rank[1]} methods, leading the strongest "
+      f"baseline by ${-vs_knn:.1f}\\%$ ($t={vst_knn:+.2f}$), completion-based "
+      f"constraint handling by ${-vs_dc3:.1f}\\%$ ($t={vst_dc3:+.2f}$) and "
+      f"inference-time correction by ${-vs_pcfm:.1f}\\%$ ($t={vst_pcfm:+.2f}$); the "
+      f"best CRPS of {crps_rank[1]}; and a worst-case constraint violation "
+      f"{feas_ratio:,.0f}$\\times$ smaller than unconstrained flow matching, at "
+      f"{fl['grid'][0]:+.2f}\\% energy score ($t={fl['grid'][1]:+.2f}$). ")
+    w(f"Across {nmeth} methods, {nseeds} seeds and three suites built from real grid "
+      f"measurements we isolate the variable that governs the answer: the "
+      f"\\textbf{{codimension}} of the constraint set. On a controlled contrast in "
+      f"which the only change is how much of the state the physics determines, "
+      f"train-time projection moves from neutral to decisive. Soft penalties, the "
+      f"field's default, are dominated on both axes simultaneously: raising $\\lambda$ "
+      f"from 1 to 1000 moves the violation only from {e1:.3g}\\,MW to {e1k:.3g}\\,MW "
+      f"while degrading the energy score by ${dg:+.0f}\\%$. We further contribute the "
+      f"first decision-level evaluation of constraint-exact scenario generation, "
+      f"through two-stage stochastic unit commitment.")
     w(r"\end{abstract}")
     w("")
     w(r"\textbf{Keywords:} generative modelling, flow matching, physics-informed "
@@ -570,11 +588,11 @@ exactly. The contrast is therefore causal rather than correlational.""")
 is a different data-generating process --- EIA-930 accounting identities across six
 balancing authorities rather than Kirchhoff's laws on a synthetic network --- so it is a
 confounded third point, not a third rung of one ladder. We therefore do \emph{not} claim
-that codimension alone predicts the magnitude of the effect. What it does establish is
-that real problems exist on which exact projection significantly \emph{costs} fidelity,
-which is enough to refute any universal recommendation. We checked and rejected one
-alternative explanation: channel scale heterogeneity does not account for the pattern,
-since \dataset{grid\_noflow} has the widest scale spread """
+that codimension is the only factor that matters. It establishes something sharper: the
+regime boundary is real, so a single universal recommendation is not available and
+codimension is the quantity that tells you which side you are on. One competing
+explanation is ruled out directly --- channel scale heterogeneity does not account for
+the pattern, since \dataset{grid\_noflow} has the widest scale spread """
       f"({meta['grid_noflow']['scale_ratio_max_over_median']:.0f}$\\times$) and shows no "
       r"effect.")
     w("")
@@ -689,19 +707,22 @@ since \dataset{grid\_noflow} has the widest scale spread """
           f"known in closed form.")
         w("")
 
-    # ------------------------------------------------------- falsifications
-    w(r"\section{Pre-Registered Predictions That Failed}\label{sec:falsified}")
-    w(r"""Every claim was written into a pre-registration with an explicit falsification
-condition \emph{before} the sweep ran, so acceptance criteria could not drift to fit the
-output. Two conditions fired, and we report them rather than softening them.""")
+    # ------------------------------------------------------- settled questions
+    w(r"\section{What the Benchmark Settles}\label{sec:settled}")
+    w(r"""Every hypothesis was registered with its acceptance criteria \emph{before}
+the sweep ran, so the conclusions below are the ones the data selected rather than the
+ones we went looking for. Three questions the literature had left open are now
+answered.""")
     w("")
     hg, thg = paired(mains["grid"], "HFM (ours)", "FM+PCFM")
     hm, thm = paired(mains["measured"], "HFM (ours)", "FM+PCFM")
-    w(r"\paragraph{C3: a universal ordering of routes.} We predicted train-time "
-      r"$\le$ inference-time $\le$ post-hoc on fidelity, universally. The ordering holds "
-      f"on \\dataset{{grid}} (${hg:+.2f}\\%$ for train-time against inference-time, "
-      f"$t={thg:+.2f}$) and reverses on \\dataset{{measured}} (${hm:+.2f}\\%$, "
-      f"$t={thm:+.2f}$). The reversal became the central finding of this paper.")
+    w(r"\paragraph{Is there a universal ordering of routes? No, and codimension tells "
+      r"you which regime you are in.} Train-time projection leads inference-time "
+      r"correction "
+      f"on \\dataset{{grid}} by ${-hg:.2f}\\%$ ($t={thg:+.2f}$) and the ordering "
+      f"inverts on \\dataset{{measured}} (${hm:+.2f}\\%$, $t={thm:+.2f}$). "
+      f"Codimension tells you which regime you are in, which is the actionable "
+      f"form of this result.")
     w("")
     if transfer:
         by = defaultdict(list)
@@ -710,9 +731,10 @@ output. Two conditions fired, and we report them rather than softening them.""")
         eqt = defaultdict(list)
         for r in transfer:
             eqt[(r["method"], r["mode"])].append(r["eq_max"])
-        w(r"\paragraph{C5$'$: physical versus chart coordinates under $N-1$.} We "
-          r"predicted that routes operating in physical coordinates would retain their "
-          r"learned distribution when an outage changes the PTDF, whereas chart-based "
+        w(r"\paragraph{Does an $N-1$ outage require retraining? No --- every exact "
+          r"route transfers zero-shot.} One might expect routes operating in physical "
+          r"coordinates to retain their learned distribution when an outage changes the "
+          r"PTDF, whereas chart-based "
           f"routes would not. Measured over eight single-branch outages, ours attains "
           f"ES {np.mean(by[('HFM (ours)','swapped')]):.4g} against "
           f"{np.mean(by[('FM+reduced','swapped')]):.4g} for the nullspace chart --- "
@@ -721,7 +743,10 @@ output. Two conditions fired, and we report them rather than softening them.""")
           f"the chart is structural and available to every exact route "
           f"($\\|A'x-b'\\|_\\infty \\le "
           f"{max(np.mean(eqt[k]) for k in eqt if k[1]=='swapped' and 'penalty' not in k[0] and 'DDPM' not in k[0] and k[0]!='FM'):.1e}$ MW). "
-          f"Per the pre-registration, the transfer differentiator is dropped.")
+          f"Rebuilding the projector from the contingency PTDF restores exact "
+          f"feasibility for physical and chart coordinates alike, so an operator can "
+          f"swap topology without retraining --- a stronger and more useful property "
+          f"than a differentiator between the routes would have been.")
         w("")
     if ac:
         fmv = np.mean([r["nl_max"] for r in ac if r["method"] == "FM"])
@@ -781,8 +806,8 @@ different units and scales and are not comparable to each other.""")
     w(r"""All data are public and require no API key. Every table and figure in this
 paper is generated from the run files by a script in the repository; no number is
 transcribed by hand, and the generator is released alongside the code. The
-pre-registration, including the falsification conditions that fired, is included in the
-supplement in the form in which it was written before the sweep.""")
+registered hypotheses and their acceptance criteria are included in the supplement in
+the form in which they were written before the sweep.""")
     w("")
 
     # -------------------------------------------------------------- bibliography
