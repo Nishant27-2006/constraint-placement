@@ -1,0 +1,8 @@
+[project]
+name = "hfm"
+version = "0.1.0"
+description = "Hamiltonian Flow Matching: constraint-exact generative scenario generation for power grids"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+include = ["hfm*"]

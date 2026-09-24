@@ -1,0 +1,7 @@
+# Pinned to the versions the reported sweep was run with.
+# HiGHS reaches us through scipy.optimize.milp / linprog -- no commercial solver.
+torch==2.14.0
+numpy==2.5.3
+scipy==1.18.1
+pandas==3.0.5
+matplotlib==3.11.2

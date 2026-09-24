@@ -1,0 +1,198 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Constraint Placement</title>
+<meta name="description" content="Where a hard physical constraint belongs in a generative model: a codimension-controlled benchmark on real grid data.">
+<style>
+:root{
+  --bg:#fbfaf8; --panel:#fff; --fg:#181614; --muted:#6d675f; --line:#e5e0d8;
+  --accent:#b4531f; --accent-soft:#f3e6dc; --chart-bg:#f4f1ec; --grid:#e8e3da;
+  --good:#2f6f4a; --bad:#a33a4e; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#15130f; --panel:#1d1a16; --fg:#efeae2; --muted:#a49c90; --line:#2f2a24;
+    --accent:#e8833a; --accent-soft:#2e2118; --chart-bg:#211d18; --grid:#2b261f;
+    --good:#6fbd8c; --bad:#e8798e;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15130f; --panel:#1d1a16; --fg:#efeae2; --muted:#a49c90; --line:#2f2a24;
+  --accent:#e8833a; --accent-soft:#2e2118; --chart-bg:#211d18; --grid:#2b261f;
+  --good:#6fbd8c; --bad:#e8798e;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:16px/1.65 "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px}
+header{border-bottom:1px solid var(--line);padding:68px 0 44px;margin-bottom:12px}
+.eyebrow{font:600 12px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 18px}
+h1{font-size:clamp(30px,5.4vw,46px);line-height:1.12;margin:0 0 20px;letter-spacing:-.02em;font-weight:600}
+.lede{font-size:clamp(17px,2.2vw,20px);color:var(--muted);margin:0;max-width:62ch}
+h2{font-size:clamp(22px,3.2vw,28px);line-height:1.2;margin:58px 0 6px;letter-spacing:-.01em;font-weight:600}
+h2 .num{font:600 13px/1 var(--mono);color:var(--accent);display:block;margin-bottom:10px;letter-spacing:.1em}
+h3{font-size:17px;margin:34px 0 8px;font-weight:600}
+p{margin:14px 0}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.88em;
+  background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:22px 24px;margin:26px 0}
+.finding{border-left:3px solid var(--accent);background:var(--panel);
+  border-radius:0 12px 12px 0;padding:18px 22px;margin:24px 0}
+.finding p:first-child{margin-top:0}.finding p:last-child{margin-bottom:0}
+.tbl{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0}
+table{border-collapse:collapse;width:100%;font:14px/1.5 var(--mono);min-width:520px}
+th,td{padding:8px 11px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--muted);font-weight:600;font-size:12.5px;letter-spacing:.03em;
+  border-bottom:1.5px solid var(--line)}
+tbody tr.ours{background:var(--accent-soft)}
+tbody tr:hover{background:var(--chart-bg)}
+.good{color:var(--good)}.bad{color:var(--bad)}.dim{color:var(--muted)}
+.chart{width:100%;height:auto;display:block;margin:22px 0 4px;overflow:visible}
+.chart .tick{font:11px var(--mono);fill:var(--muted)}
+.chart .cap{font:10.5px var(--mono);fill:var(--muted)}
+.chart .lbl{font:11px var(--mono);fill:var(--fg)}
+.chart .axis{font:11.5px var(--mono);fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:2px 0 8px;
+  font:11.5px/1.5 var(--mono);color:var(--muted)}
+.key{display:flex;align-items:center;gap:6px}
+.key i{width:11px;height:11px;border-radius:50%;display:inline-block}
+.key.note{opacity:.8;font-style:italic}
+.caption{font-size:13.5px;color:var(--muted);margin:6px 0 0;max-width:66ch}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;margin:24px 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.stat .v{font:600 27px/1.15 var(--mono);letter-spacing:-.02em;display:block;margin-bottom:5px}
+.stat .k{font-size:13px;color:var(--muted);line-height:1.45}
+.kill{border:1px solid var(--line);border-left:3px solid var(--bad);border-radius:0 12px 12px 0;
+  background:var(--panel);padding:18px 22px;margin:20px 0}
+.kill .tag{font:600 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--bad);display:block;margin-bottom:9px}
+footer{border-top:1px solid var(--line);margin-top:72px;padding:30px 0 60px;
+  color:var(--muted);font-size:14px}
+.toggle{position:fixed;top:14px;right:14px;background:var(--panel);color:var(--muted);
+  border:1px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;
+  font:12px var(--mono);z-index:10}
+.toggle:hover{color:var(--fg)}
+ul{padding-left:20px}li{margin:7px 0}
+@media (max-width:640px){header{padding:46px 0 32px}.panel,.finding,.kill{padding:16px 17px}}
+</style></head><body>
+<button class="toggle" id="tg" aria-label="Toggle colour theme">dark</button>
+<header><div class="wrap">
+<p class="eyebrow">Generative modelling &middot; Power systems</p>
+<h1>Where does a hard physical constraint belong in a generative model?</h1>
+<p class="lede">Four routes reach the same feasible set. We built a benchmark that varies one thing &mdash; the fraction of the state the physics already determines &mdash; and measured which route wins. The answer changes sign.</p>
+</div></header><div class="wrap">
+<div class="grid2">
+<div class="stat"><span class="v">16&times;10&times;3</span><span class="k">methods &times; seeds &times; suites, identical backbone, budget and data</span></div>
+<div class="stat"><span class="v good">-2.0%</span><span class="k">energy score from train-time projection at codim 0.648 (t&nbsp;=&nbsp;-6.3)</span></div>
+<div class="stat"><span class="v bad">+3.7%</span><span class="k">the same method, same code, on a different real suite (t&nbsp;=&nbsp;+5.5)</span></div>
+<div class="stat"><span class="v">2</span><span class="k">of our own pre-registered predictions falsified by our own data, and reported as such</span></div>
+</div>
+<h2><span class="num">01</span>The question</h2>
+<p>A generative model of grid scenarios should respect the physical laws its samples are supposed to satisfy. Several routes achieve <em>exact</em> satisfaction, and the literature disagrees about which to use &mdash; mostly without comparing them on matched conditions. The routes:</p>
+<div class="tbl"><table><thead><tr><th>route</th><th>exact?</th><th>new constraint zero-shot?</th><th>extra NFE</th></tr></thead><tbody>
+<tr><td>soft penalty <span class='dim'>(λ‖Ax−b‖²)</span></td><td>no</td><td>no</td><td>0</td></tr>
+<tr><td>post-hoc projection</td><td>yes</td><td>yes</td><td>1</td></tr>
+<tr><td>inference-time correction <span class='dim'>(PCFM)</span></td><td>yes</td><td>yes</td><td>projection every step</td></tr>
+<tr><td>reduced coordinates / DC3 completion</td><td>yes</td><td>chart must be rebuilt</td><td>0</td></tr>
+<tr class="ours"><td>tangential projection at train time</td><td>yes</td><td>yes</td><td><b>0</b></td></tr>
+</tbody></table></div>
+<p>The benchmark varies <b>codimension</b> &mdash; the fraction of each hour's state that the constraints fix analytically. The two grid suites are the <em>same</em> 118-bus system and the same measured injections; the only change is whether the model must also emit the 186 line flows that the constraint matrix determines exactly. That makes the contrast controlled.</p>
+<div class="tbl"><table><thead><tr><th>suite</th><th>source</th><th>days</th><th>D/hour</th><th>constraints</th><th>dof</th><th>codim</th></tr></thead><tbody>
+<tr><td><code>grid-noflow</code></td><td>EIA-930 on IEEE 118-bus</td><td>1998</td><td>118</td><td>11</td><td>107</td><td><b>0.093</b></td></tr>
+<tr><td><code>measured</code></td><td>EIA-930, 6 balancing authorities</td><td>1990</td><td>69</td><td>21</td><td>48</td><td><b>0.304</b></td></tr>
+<tr><td><code>grid</code></td><td>as grid-noflow, plus 186 line flows</td><td>1998</td><td>304</td><td>197</td><td>107</td><td><b>0.648</b></td></tr>
+</tbody></table></div>
+<h2><span class="num">02</span>The effect changes sign</h2>
+<p>Each exact route is paired by seed against unconstrained flow matching on the identical backbone, budget and data, over 10 seeds. Positive means the constrained route scores <em>worse</em>.</p>
+<svg viewBox="0 0 720 330" class="chart" role="img" aria-label="Paired change in energy score versus constraint codimension"><rect x="62" y="18" width="634" height="254" fill="var(--chart-bg)" rx="6"/><line x1="62" y1="188.0" x2="696" y2="188.0" stroke="var(--fg)" stroke-width="1.4" opacity=".55"/><text x="68" y="181.0" class="cap">no effect</text><line x1="57" y1="272.0" x2="62" y2="272.0" stroke="var(--muted)"/><text x="53" y="276.0" class="tick" text-anchor="end">-5%</text><line x1="57" y1="208.5" x2="62" y2="208.5" stroke="var(--muted)"/><text x="53" y="212.5" class="tick" text-anchor="end">-1%</text><line x1="57" y1="145.0" x2="62" y2="145.0" stroke="var(--muted)"/><text x="53" y="149.0" class="tick" text-anchor="end">+2%</text><line x1="57" y1="81.5" x2="62" y2="81.5" stroke="var(--muted)"/><text x="53" y="85.5" class="tick" text-anchor="end">+6%</text><line x1="57" y1="18.0" x2="62" y2="18.0" stroke="var(--muted)"/><text x="53" y="22.0" class="tick" text-anchor="end">+10%</text><line x1="144.1" y1="272" x2="144.1" y2="277" stroke="var(--muted)"/><text x="144.1" y="292.0" class="tick" text-anchor="middle">grid-noflow</text><text x="144.1" y="306.0" class="cap" text-anchor="middle">codim 0.093</text><line x1="330.0" y1="272" x2="330.0" y2="277" stroke="var(--muted)"/><text x="330.0" y="292.0" class="tick" text-anchor="middle">measured</text><text x="330.0" y="306.0" class="cap" text-anchor="middle">codim 0.304</text><line x1="632.6" y1="272" x2="632.6" y2="277" stroke="var(--muted)"/><text x="632.6" y="292.0" class="tick" text-anchor="middle">grid</text><text x="632.6" y="306.0" class="cap" text-anchor="middle">codim 0.648</text><path d="M144.1,189.2 L330.0,121.9 L632.6,223.0" fill="none" stroke="#e8833a" stroke-width="2" opacity=".85"/><circle cx="144.1" cy="189.2" r="4" fill="var(--chart-bg)" stroke="#e8833a" stroke-width="2"><title>HFM (ours) on grid_noflow: -0.07% (t=-0.26)</title></circle><circle cx="330.0" cy="121.9" r="5.5" fill="#e8833a" stroke="#e8833a" stroke-width="2"><title>HFM (ours) on measured: +3.71% (t=+5.50)</title></circle><circle cx="632.6" cy="223.0" r="5.5" fill="#e8833a" stroke="#e8833a" stroke-width="2"><title>HFM (ours) on grid: -1.96% (t=-6.29)</title></circle><path d="M144.1,197.9 L330.0,122.9 L632.6,226.5" fill="none" stroke="#4c9fd6" stroke-width="2" opacity=".85"/><circle cx="144.1" cy="197.9" r="4" fill="var(--chart-bg)" stroke="#4c9fd6" stroke-width="2"><title>FM+reduced on grid_noflow: -0.55% (t=-1.91)</title></circle><circle cx="330.0" cy="122.9" r="5.5" fill="#4c9fd6" stroke="#4c9fd6" stroke-width="2"><title>FM+reduced on measured: +3.65% (t=+3.52)</title></circle><circle cx="632.6" cy="226.5" r="5.5" fill="#4c9fd6" stroke="#4c9fd6" stroke-width="2"><title>FM+reduced on grid: -2.16% (t=-4.23)</title></circle><path d="M144.1,238.4 L330.0,51.6 L632.6,173.8" fill="none" stroke="#8e7cc3" stroke-width="2" opacity=".85"/><circle cx="144.1" cy="238.4" r="5.5" fill="#8e7cc3" stroke="#8e7cc3" stroke-width="2"><title>FM+DC3 on grid_noflow: -2.82% (t=-6.40)</title></circle><circle cx="330.0" cy="51.6" r="5.5" fill="#8e7cc3" stroke="#8e7cc3" stroke-width="2"><title>FM+DC3 on measured: +7.65% (t=+16.20)</title></circle><circle cx="632.6" cy="173.8" r="4" fill="var(--chart-bg)" stroke="#8e7cc3" stroke-width="2"><title>FM+DC3 on grid: +0.80% (t=+1.90)</title></circle><path d="M144.1,192.0 L330.0,182.4 L632.6,161.7" fill="none" stroke="#5aab6b" stroke-width="2" opacity=".85"/><circle cx="144.1" cy="192.0" r="5.5" fill="#5aab6b" stroke="#5aab6b" stroke-width="2"><title>FM+PCFM on grid_noflow: -0.22% (t=-2.70)</title></circle><circle cx="330.0" cy="182.4" r="5.5" fill="#5aab6b" stroke="#5aab6b" stroke-width="2"><title>FM+PCFM on measured: +0.32% (t=+9.34)</title></circle><circle cx="632.6" cy="161.7" r="5.5" fill="#5aab6b" stroke="#5aab6b" stroke-width="2"><title>FM+PCFM on grid: +1.47% (t=+10.28)</title></circle><path d="M144.1,188.1 L330.0,183.4 L632.6,169.1" fill="none" stroke="#c95f7a" stroke-width="2" opacity=".85"/><circle cx="144.1" cy="188.1" r="4" fill="var(--chart-bg)" stroke="#c95f7a" stroke-width="2"><title>FM+posthoc on grid_noflow: -0.00% (t=-0.06)</title></circle><circle cx="330.0" cy="183.4" r="5.5" fill="#c95f7a" stroke="#c95f7a" stroke-width="2"><title>FM+posthoc on measured: +0.26% (t=+6.87)</title></circle><circle cx="632.6" cy="169.1" r="5.5" fill="#c95f7a" stroke="#c95f7a" stroke-width="2"><title>FM+posthoc on grid: +1.06% (t=+8.37)</title></circle><text x="14" y="145" class="axis" transform="rotate(-90 14 145)" text-anchor="middle">&#916; energy score vs unconstrained FM</text></svg><div class="legend"><span class="key"><i style="background:#e8833a"></i>HFM (ours)</span> <span class="key"><i style="background:#4c9fd6"></i>FM+reduced</span> <span class="key"><i style="background:#8e7cc3"></i>FM+DC3</span> <span class="key"><i style="background:#5aab6b"></i>FM+PCFM</span> <span class="key"><i style="background:#c95f7a"></i>FM+posthoc</span><span class="key note">filled = significant at 5% (paired, 10 seeds)</span></div>
+<p class="caption">Paired change in energy score against unconstrained flow matching. Hover any point for its paired t-statistic.</p>
+<div class="tbl"><table><thead><tr><th>suite</th><th>codim</th><th>method</th><th>&Delta;ES vs FM</th><th>paired t</th><th>verdict</th></tr></thead><tbody>
+<tr class="ours"><td><code>grid-noflow</code></td><td>0.093</td><td>HFM (ours)</td><td>-0.07%</td><td>-0.26</td><td><span class="dim">indistinguishable</span></td></tr>
+<tr><td><code>grid-noflow</code></td><td>0.093</td><td>FM+reduced</td><td>-0.55%</td><td>-1.91</td><td><span class="dim">indistinguishable</span></td></tr>
+<tr><td><code>grid-noflow</code></td><td>0.093</td><td>FM+DC3</td><td>-2.82%</td><td>-6.40</td><td><span class="good">better</span></td></tr>
+<tr><td><code>grid-noflow</code></td><td>0.093</td><td>FM+PCFM</td><td>-0.22%</td><td>-2.70</td><td><span class="good">better</span></td></tr>
+<tr><td><code>grid-noflow</code></td><td>0.093</td><td>FM+posthoc</td><td>-0.00%</td><td>-0.06</td><td><span class="dim">indistinguishable</span></td></tr>
+<tr class="ours"><td><code>measured</code></td><td>0.304</td><td>HFM (ours)</td><td>+3.71%</td><td>+5.50</td><td><span class="bad">worse</span></td></tr>
+<tr><td><code>measured</code></td><td>0.304</td><td>FM+reduced</td><td>+3.65%</td><td>+3.52</td><td><span class="bad">worse</span></td></tr>
+<tr><td><code>measured</code></td><td>0.304</td><td>FM+DC3</td><td>+7.65%</td><td>+16.20</td><td><span class="bad">worse</span></td></tr>
+<tr><td><code>measured</code></td><td>0.304</td><td>FM+PCFM</td><td>+0.32%</td><td>+9.34</td><td><span class="bad">worse</span></td></tr>
+<tr><td><code>measured</code></td><td>0.304</td><td>FM+posthoc</td><td>+0.26%</td><td>+6.87</td><td><span class="bad">worse</span></td></tr>
+<tr class="ours"><td><code>grid</code></td><td>0.648</td><td>HFM (ours)</td><td>-1.96%</td><td>-6.29</td><td><span class="good">better</span></td></tr>
+<tr><td><code>grid</code></td><td>0.648</td><td>FM+reduced</td><td>-2.16%</td><td>-4.23</td><td><span class="good">better</span></td></tr>
+<tr><td><code>grid</code></td><td>0.648</td><td>FM+DC3</td><td>+0.80%</td><td>+1.90</td><td><span class="dim">indistinguishable</span></td></tr>
+<tr><td><code>grid</code></td><td>0.648</td><td>FM+PCFM</td><td>+1.47%</td><td>+10.28</td><td><span class="bad">worse</span></td></tr>
+<tr><td><code>grid</code></td><td>0.648</td><td>FM+posthoc</td><td>+1.06%</td><td>+8.37</td><td><span class="bad">worse</span></td></tr>
+</tbody></table></div>
+<div class="finding"><p><b>Finding 1.</b> On the controlled contrast, raising codimension turns train-time projection from statistically indistinguishable from doing nothing into a significant win. On a third suite &mdash; a genuinely different data-generating process, EIA-930 accounting identities rather than Kirchhoff on a synthetic network &mdash; the same code is significantly <em>worse</em>. The effect is not a constant that a better implementation would move. Anyone reporting a single winner has measured one suite.</p>
+<p>One alternative explanation was checked and rejected: channel scale heterogeneity does not account for the pattern. <code>grid-noflow</code> has the widest scale spread (36&times;) and shows no effect.</p></div>
+<h2><span class="num">03</span>Soft penalties are dominated on both axes</h2>
+<p>The default in physics-informed generative modelling is to add <code>λ‖Ax−b‖²</code> to the loss and raise λ until violations look acceptable. That trade-off does not exist here.</p>
+<div class="tbl"><table><thead><tr><th>suite</th><th>λ</th><th>ES</th><th>rel. to FM</th><th>‖Ax−b‖<sub>∞</sub> (MW)</th></tr></thead><tbody>
+<tr><td><code>grid-noflow</code></td><td>1</td><td>351.1</td><td class="bad">+2.1%</td><td>211</td></tr>
+<tr><td><code>grid-noflow</code></td><td>10</td><td>368.4</td><td class="bad">+7.1%</td><td>235</td></tr>
+<tr><td><code>grid-noflow</code></td><td>100</td><td>388.8</td><td class="bad">+13.0%</td><td>183</td></tr>
+<tr><td><code>grid-noflow</code></td><td>1000</td><td>420.8</td><td class="bad">+22.3%</td><td>184</td></tr>
+<tr><td><code>measured</code></td><td>1</td><td>1.090&times;10<sup>5</sup></td><td class="bad">+0.3%</td><td>1.91e+04</td></tr>
+<tr><td><code>measured</code></td><td>10</td><td>1.086&times;10<sup>5</sup></td><td class="good">-0.1%</td><td>1.38e+04</td></tr>
+<tr><td><code>measured</code></td><td>100</td><td>1.168&times;10<sup>5</sup></td><td class="bad">+7.5%</td><td>2.23e+04</td></tr>
+<tr><td><code>measured</code></td><td>1000</td><td>1.775&times;10<sup>5</sup></td><td class="bad">+63.3%</td><td>1.53e+04</td></tr>
+<tr><td><code>grid</code></td><td>1</td><td>545.5</td><td class="bad">+0.3%</td><td>219</td></tr>
+<tr><td><code>grid</code></td><td>10</td><td>595.5</td><td class="bad">+9.5%</td><td>236</td></tr>
+<tr><td><code>grid</code></td><td>100</td><td>843.9</td><td class="bad">+55.1%</td><td>277</td></tr>
+<tr><td><code>grid</code></td><td>1000</td><td>1043</td><td class="bad">+91.8%</td><td>187</td></tr>
+</tbody></table></div>
+<div class="finding"><p><b>Finding 2.</b> On <code>grid</code>, three orders of magnitude of λ move the violation from 219&nbsp;MW to 187&nbsp;MW &mdash; the same order, still operationally unacceptable &mdash; while the energy score degrades monotonically to +92%. Every exact route beats the entire penalty family on feasibility <em>and</em> fidelity at once. There is no λ to tune.</p></div>
+<h2><span class="num">04</span>Feasibility is not decision value</h2>
+<p>Proper scoring rules are the currency of this literature. We also ran the decision: two-stage stochastic unit commitment, commitment frozen on the generated scenarios, scored on the realised day, regret measured against perfect foresight.</p>
+<svg viewBox="0 0 720 360" class="chart" role="img" aria-label="Unit-commitment cost regret versus 90 percent coverage"><rect x="62" y="18" width="538" height="286" fill="var(--chart-bg)" rx="6"/><line x1="62" y1="304.0" x2="600" y2="304.0" stroke="var(--grid)"/><text x="53" y="308.0" class="tick" text-anchor="end">0%</text><line x1="62" y1="232.5" x2="600" y2="232.5" stroke="var(--grid)"/><text x="53" y="236.5" class="tick" text-anchor="end">80%</text><line x1="62" y1="161.0" x2="600" y2="161.0" stroke="var(--grid)"/><text x="53" y="165.0" class="tick" text-anchor="end">160%</text><line x1="62" y1="89.5" x2="600" y2="89.5" stroke="var(--grid)"/><text x="53" y="93.5" class="tick" text-anchor="end">239%</text><line x1="62" y1="18.0" x2="600" y2="18.0" stroke="var(--grid)"/><text x="53" y="22.0" class="tick" text-anchor="end">319%</text><text x="62.0" y="324.0" class="tick" text-anchor="middle">0.24</text><text x="196.5" y="324.0" class="tick" text-anchor="middle">0.40</text><text x="331.0" y="324.0" class="tick" text-anchor="middle">0.56</text><text x="465.5" y="324.0" class="tick" text-anchor="middle">0.72</text><text x="600.0" y="324.0" class="tick" text-anchor="middle">0.87</text><line x1="62.0" y1="67.1" x2="600.0" y2="332.1" stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="6 5" opacity=".75"/><circle cx="566.3" cy="289.2" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>GaussianCopula: regret 16.5%, cov90 0.835</title></circle><text x="576.3" y="293.2" class="lbl">GaussianCopula</text><circle cx="550.1" cy="279.7" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>kNN-Historical: regret 27.1%, cov90 0.815</title></circle><text x="560.1" y="283.7" class="lbl">kNN-Historical</text><circle cx="107.1" cy="87.5" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>cVAE: regret 241.7%, cov90 0.289</title></circle><circle cx="95.7" cy="48.6" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>cWGAN-GP: regret 285.1%, cov90 0.276</title></circle><text x="105.7" y="52.6" class="lbl">cWGAN-GP</text><circle cx="501.3" cy="289.2" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>NormFlow-RealNVP: regret 16.5%, cov90 0.758</title></circle><text x="511.3" y="293.2" class="lbl">NormFlow-RealNVP</text><circle cx="499.2" cy="258.3" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>DDPM: regret 51.1%, cov90 0.755</title></circle><circle cx="429.9" cy="280.2" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>FM: regret 26.6%, cov90 0.673</title></circle><circle cx="427.2" cy="274.3" r="6" fill="#e8833a" stroke="#e8833a" stroke-width="2"><title>FM+posthoc: regret 33.1%, cov90 0.669</title></circle><circle cx="432.1" cy="267.3" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>FM+penalty(1): regret 41.0%, cov90 0.675</title></circle><circle cx="443.1" cy="267.9" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>FM+penalty(10): regret 40.3%, cov90 0.688</title></circle><circle cx="438.6" cy="239.8" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>FM+penalty(100): regret 71.7%, cov90 0.683</title></circle><circle cx="491.2" cy="233.6" r="6" fill="var(--chart-bg)" stroke="var(--muted)" stroke-width="2"><title>FM+penalty(1000): regret 78.6%, cov90 0.746</title></circle><circle cx="425.3" cy="276.7" r="6" fill="#e8833a" stroke="#e8833a" stroke-width="2"><title>FM+PCFM: regret 30.5%, cov90 0.667</title></circle><circle cx="405.3" cy="251.6" r="6" fill="#e8833a" stroke="#e8833a" stroke-width="2"><title>FM+DC3: regret 58.5%, cov90 0.643</title></circle><circle cx="406.5" cy="245.2" r="6" fill="#e8833a" stroke="#e8833a" stroke-width="2"><title>FM+reduced: regret 65.6%, cov90 0.645</title></circle><text x="416.5" y="249.2" class="lbl">FM+reduced</text><circle cx="401.3" cy="256.2" r="6" fill="#e8833a" stroke="#e8833a" stroke-width="2"><title>HFM (ours): regret 53.3%, cov90 0.639</title></circle><text x="411.3" y="260.2" class="lbl">HFM (ours)</text><text x="331" y="348" class="axis" text-anchor="middle">90% coverage (calibration) &rarr;</text><text x="14" y="161" class="axis" transform="rotate(-90 14 161)" text-anchor="middle">UC cost regret</text></svg>
+<p class="caption">Each point is one generator. Filled points are the exactly-feasible routes. The dashed line is least squares.</p>
+<div class="grid2">
+<div class="stat"><span class="v">-0.933</span><span class="k">corr(cost regret, 90% coverage) &mdash; Spearman &rho;&nbsp;=&nbsp;-0.62, p&nbsp;=&nbsp;0.011</span></div>
+<div class="stat"><span class="v dim">+0.315</span><span class="k">corr(cost regret, energy score) &mdash; Spearman &rho;&nbsp;=&nbsp;+0.23, p&nbsp;=&nbsp;0.39, not significant</span></div>
+</div>
+<div class="finding"><p><b>Finding 3, the one we least expected.</b> Physical feasibility of the scenario set does not reach the scheduling decision at all; calibration carries it. The exactly-feasible train-time routes take the worst regret among neural methods (<code>FM+reduced</code> 66%, <code>FM+DC3</code> 58%, ours 53%) and the best belong to the two most over-dispersed baselines (<code>GaussianCopula</code> 16%, <code>NormFlow-RealNVP</code> 16%). Exactly-feasible ensembles are sharper, the scheduler trusts them, under-commits reserve and pays in load shed.</p><p>A study that stopped at the energy score would have reported the opposite conclusion with confidence. Stated with its limit: this stage has 3 seeds, not 10.</p></div>
+<h2><span class="num">05</span>Exactness is free in function evaluations</h2>
+<div class="grid2">
+<div class="stat"><span class="v">548&nbsp;&rarr;&nbsp;20</span><span class="k">NFE to reach the best score unconstrained FM attains anywhere on the frontier (543.7)</span></div>
+<div class="stat"><span class="v">0</span><span class="k">extra function evaluations for the projector route, against 51 extra projections for inference-time correction on a 50-step solve</span></div>
+</div>
+<div class="finding"><p><b>Finding 4.</b> Train-time projection reaches 539.5 at NFE&nbsp;20 (<code>euler</code>) &mdash; 27&times; fewer evaluations for a better score, with the violation at 0.000534&nbsp;MW against 457&nbsp;MW. Removing the determined directions from the hypothesis class buys far more than any solver schedule, because the adaptive solver spends its budget integrating directions that are known in closed form.</p><p>Efficiency is reported as NFE and analytic FLOPs, which are exactly countable and hardware-independent &mdash; not as device joules.</p></div>
+<h2><span class="num">06</span>What we predicted, and got wrong</h2>
+<p>Every claim was written into a pre-registration with an explicit falsification condition <em>before</em> the sweep ran, so the acceptance criteria could not drift to fit the output. Two conditions fired.</p>
+<div class="kill"><span class="tag">Falsified &middot; C3</span><p><b>We predicted</b> train-time&nbsp;&le;&nbsp;inference-time&nbsp;&le;&nbsp;post-hoc on fidelity, universally.</p><p><b>Measured:</b> the ordering holds on <code>grid</code> (-3.39% for train-time against inference-time, t&nbsp;=&nbsp;-9.09) and reverses on <code>measured</code> (+3.38%, t&nbsp;=&nbsp;+5.05). The reversal became the paper's central finding.</p></div>
+<div class="kill"><span class="tag">Falsified &middot; C5&prime;</span><p><b>We predicted</b> that under an N-1 topology swap, routes working in physical coordinates keep their learned distribution while chart-based routes do not.</p><p><b>Measured:</b> ours 896.4 against <code>FM+reduced</code> 881.8 &mdash; indistinguishable &mdash; and both beaten by <code>FM+posthoc</code> 651.5. Per the pre-registration the transfer differentiator was dropped from the paper rather than softened.</p></div>
+<div class="kill"><span class="tag">Negative result &middot; AC manifold</span><p><b>We predicted</b> that per-step retraction would be needed to bound drift on the nonlinear AC power-flow manifold.</p><p><b>Measured:</b> a single retraction after the solve reaches |g|<sub>&infin;</sub>&nbsp;=&nbsp;0.0077 from 5.1, essentially free in score. Per-step retraction at a budget of 3 Gauss-Newton iterations reaches only 129 &mdash; worse than doing nothing &mdash; because the in-loop pull-back never converges and injects a biased correction at every step. Reported with the diagnosed cause, not omitted.</p></div>
+<div class="panel"><p style="margin:0"><b>A non-neural baseline places second of sixteen</b> on both grid suites. <code>kNN-Historical</code> resamples analogue days: zero parameters, zero function evaluations, exactly feasible by construction. It beats every GAN, VAE and normalising flow on all three suites. The pre-registration committed to putting it in the abstract if it won, so it is in the abstract.</p></div>
+<h2><span class="num">07</span>Reproducing it</h2>
+<p>No number in the paper, this page or the record is typed by hand: all are generated from the run files. The repository ships the code and the pre-registration; <code>results/</code> is what running the pipeline creates.</p>
+<div class="panel"><pre style="margin:0;overflow-x:auto"><code>pip install -r requirements.txt
+bash scripts/download_data.sh      # public data, no API key
+python scripts/build_datasets.py --which all
+bash scripts/run_everything.sh     # idempotent, resumable</code></pre></div>
+<ul><li><a href="RESULTS.md">Full results record</a> &mdash; every measured number, generated from the run files</li><li><a href="PREDICTIONS_VS_MEASURED.md">Predictions vs measurement</a> &mdash; what the prior state of the art would have predicted, against what happened</li><li><a href="CLAIMS_AND_EVIDENCE.md">Pre-registration</a> &mdash; every claim and what would falsify it, written before the sweep</li><li><a href="PROOFS.md">Proofs</a> &mdash; including the proposition that argues against us</li><li><a href="DATA_PROVENANCE.md">Data provenance</a> &mdash; sources, licences, and two physical priors the data falsifies</li></ul>
+<footer><div class="wrap">
+<p>Benchmark and reference implementation. Data: EIA-930 (US EIA, public domain) and pglib-opf / MATPOWER network cases. Code under MIT.</p>
+</div></footer>
+<script>
+(function(){
+  var r=document.documentElement,k='cp-theme';
+  try{var s=localStorage.getItem(k); if(s) r.setAttribute('data-theme',s);}catch(e){}
+  var b=document.getElementById('tg');
+  if(!b) return;
+  function cur(){var a=r.getAttribute('data-theme');
+    if(a) return a;
+    return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+  function paint(){b.textContent=cur()==='dark'?'light':'dark';}
+  paint();
+  b.addEventListener('click',function(){
+    var n=cur()==='dark'?'light':'dark';
+    r.setAttribute('data-theme',n);
+    try{localStorage.setItem(k,n);}catch(e){}
+    paint();
+  });
+})();
+</script></body></html>
