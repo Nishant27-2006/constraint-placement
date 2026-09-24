@@ -32,11 +32,19 @@
 \sisetup{per-mode=symbol,group-separator={,}}
 
 \usepackage{xcolor}
-\definecolor{iclrblue}{HTML}{0055A4}
-\definecolor{energygreen}{HTML}{2A7B3C}
-\definecolor{warnred}{HTML}{C41E3A}
+% Okabe-Ito: colourblind-safe under protan, deutan and tritan vision.
+\definecolor{okorange}{HTML}{E69F00}
+\definecolor{oksky}{HTML}{56B4E9}
+\definecolor{okgreen}{HTML}{009E73}
+\definecolor{okblue}{HTML}{0072B2}
+\definecolor{okverm}{HTML}{D55E00}
+\definecolor{okpurple}{HTML}{CC79A7}
+% aliases kept so existing colour names still resolve
+\colorlet{iclrblue}{okblue}
+\colorlet{energygreen}{okgreen}
+\colorlet{warnred}{okverm}
 
-\usepackage[colorlinks=true,linkcolor=iclrblue,urlcolor=iclrblue,citecolor=energygreen]{hyperref}
+\usepackage[colorlinks=true,linkcolor=okblue,urlcolor=okblue,citecolor=okverm]{hyperref}
 \usepackage{url}
 
 \usepackage{algorithm}
@@ -171,23 +179,25 @@ We compare 16 generators over 10 seeds with an identical backbone, training budg
 \begin{figure}[t]\centering
 \begin{tikzpicture}
 \begin{axis}[
-    width=11cm, height=6.4cm,
+    width=12cm, height=6.8cm,
     xlabel={Constraint codimension $r/D$},
     ylabel={$\Delta$ES vs unconstrained FM (\%)},
-    xmin=0.02, xmax=0.72, grid=major, axis lines=left,
-    legend style={at={(0.5,-0.24)},anchor=north,legend columns=-1,font=\footnotesize},
+    xmin=0.02, xmax=0.78, grid=major, axis lines=left,
+    legend style={at={(0.5,-0.26)},anchor=north,legend columns=-1,font=\footnotesize},
     title={\textbf{The sign of the constraint effect flips with codimension}},
     title style={font=\small\bfseries,yshift=-0.2cm},
     every axis plot/.append style={line width=1.1pt},
+    error bars/y dir=both, error bars/y explicit,
 ]
-\draw[black,dashed,thick] (axis cs:0.02,0) -- (axis cs:0.72,0);
-\addplot[color=energygreen,mark=*,mark size=2.2pt] coordinates {(0.093,-0.068) (0.304,3.706) (0.648,-1.962)};
+\addplot[black,dashed,thick,forget plot] coordinates {(0.02,0) (0.78,0)};
+\node[anchor=west,font=\scriptsize,gray] at (axis cs:0.03,0.45) {no effect};
+\addplot[color=okverm,mark=*,mark size=2.4pt] coordinates {(0.093,-0.068) +- (0,0.584) (0.304,3.706) +- (0,1.524) (0.648,-1.962) +- (0,0.705)};
 \addlegendentry{HFM (ours)}
-\addplot[color=iclrblue,mark=square*,mark size=2.2pt] coordinates {(0.093,-0.552) (0.304,3.651) (0.648,-2.158)};
+\addplot[color=okblue,mark=square*,mark size=2.4pt] coordinates {(0.093,-0.552) +- (0,0.654) (0.304,3.651) +- (0,2.349) (0.648,-2.158) +- (0,1.154)};
 \addlegendentry{FM+reduced}
-\addplot[color=warnred,mark=triangle*,mark size=2.2pt] coordinates {(0.093,-2.822) (0.304,7.646) (0.648,0.800)};
+\addplot[color=okgreen,mark=triangle*,mark size=2.4pt] coordinates {(0.093,-2.822) +- (0,0.997) (0.304,7.646) +- (0,1.068) (0.648,0.800) +- (0,0.950)};
 \addlegendentry{FM+DC3}
-\addplot[color=gray,mark=diamond*,mark size=2.2pt] coordinates {(0.093,-0.225) (0.304,0.316) (0.648,1.474)};
+\addplot[color=okpurple,mark=diamond*,mark size=2.4pt] coordinates {(0.093,-0.225) +- (0,0.188) (0.304,0.316) +- (0,0.077) (0.648,1.474) +- (0,0.324)};
 \addlegendentry{FM+PCFM}
 \end{axis}
 \end{tikzpicture}
@@ -234,20 +244,24 @@ since \dataset{grid\_noflow} has the widest scale spread (36$\times$) and shows 
 \begin{figure}[t]\centering
 \begin{tikzpicture}
 \begin{axis}[
-    width=11cm, height=5.6cm,
-    xlabel={Penalty weight $\lambda$}, ylabel={Degradation vs FM (\%)},
+    width=12cm, height=6.4cm,
+    xlabel={Worst-case violation $\|Ax-b\|_\infty$ (MW, log scale)},
+    ylabel={Energy score $\downarrow$},
     xmode=log, grid=major, axis lines=left,
-    legend style={at={(0.03,0.97)},anchor=north west,font=\footnotesize},
-    title={\textbf{Raising $\lambda$ costs fidelity without buying feasibility}},
+    legend style={at={(0.5,-0.26)},anchor=north,legend columns=-1,font=\footnotesize},
+    title={\textbf{Every penalty setting is dominated on both axes}},
     title style={font=\small\bfseries,yshift=-0.2cm},
-    every axis plot/.append style={line width=1.1pt},
 ]
-\addplot[color=energygreen,mark=*,mark size=2pt] coordinates {(1,0.28) (10,9.47) (100,55.12) (1000,91.78)};
-\addlegendentry{\dataset{grid}}
-\addplot[color=iclrblue,mark=square*,mark size=2pt] coordinates {(1,0.25) (10,-0.08) (100,7.48) (1000,63.28)};
-\addlegendentry{\dataset{measured}}
-\addplot[color=warnred,mark=triangle*,mark size=2pt] coordinates {(1,2.07) (10,7.11) (100,13.04) (1000,22.33)};
-\addlegendentry{\dataset{grid\_noflow}}
+\addplot[color=okpurple,mark=diamond*,mark size=2.6pt,dashed] coordinates {(218.9,545.534) (235.9,595.523) (276.5,843.858) (187.4,1043.256)};
+\addlegendentry{soft penalty}
+\node[anchor=west,font=\scriptsize,okpurple] at (axis cs:218.9,545.534) {~$\lambda=1$};
+\node[anchor=west,font=\scriptsize,okpurple] at (axis cs:235.9,595.523) {~$\lambda=10$};
+\node[anchor=west,font=\scriptsize,okpurple] at (axis cs:276.5,843.858) {~$\lambda=100$};
+\node[anchor=west,font=\scriptsize,okpurple] at (axis cs:187.4,1043.256) {~$\lambda=1000$};
+\addplot[only marks,color=okverm,mark=*,mark size=2.6pt] coordinates {(0.0006483,533.327) (0.000234,532.258) (0.0003014,548.351) (0.0002156,552.019) (8.707e-05,549.759)};
+\addlegendentry{exact routes}
+\addplot[only marks,color=black,mark=x,mark size=3.4pt] coordinates {(471.8,543.999)};
+\addlegendentry{unconstrained FM}
 \end{axis}
 \end{tikzpicture}
 \caption{\textbf{There is no $\lambda$ to tune.} Energy-score degradation grows monotonically with the penalty weight on all three suites, while the worst-case violation stays at the same order of magnitude (Table~\ref{tab:penalty}).}\label{fig:penalty}
@@ -280,9 +294,9 @@ Raising $\lambda$ from 1 to 1000 moves the worst-case violation only from 219\,M
     title style={font=\small\bfseries,yshift=-0.2cm},
 ]
 \addplot[color=black,dashed,line width=0.9pt,forget plot] coordinates {(0.246,259.88) (0.865,-26.73)};
-\addplot[only marks,mark=*,mark size=2.6pt,color=energygreen] coordinates {(0.669,33.11) (0.667,30.52) (0.643,58.48) (0.645,65.59) (0.639,53.32)};
+\addplot[only marks,mark=*,mark size=2.6pt,color=okverm] coordinates {(0.669,33.11) (0.667,30.52) (0.643,58.48) (0.645,65.59) (0.639,53.32)};
 \addlegendentry{exactly feasible}
-\addplot[only marks,mark=o,mark size=2.6pt,color=iclrblue] coordinates {(0.835,16.50) (0.815,27.07) (0.289,241.67) (0.276,285.06) (0.758,16.47) (0.755,51.07) (0.673,26.59) (0.675,40.96) (0.688,40.34) (0.683,71.69) (0.746,78.59)};
+\addplot[only marks,mark=o,mark size=2.6pt,color=okblue] coordinates {(0.835,16.50) (0.815,27.07) (0.289,241.67) (0.276,285.06) (0.758,16.47) (0.755,51.07) (0.673,26.59) (0.675,40.96) (0.688,40.34) (0.683,71.69) (0.746,78.59)};
 \addlegendentry{all other generators}
 \end{axis}
 \end{tikzpicture}
@@ -325,11 +339,11 @@ Across the 16 generators scored on both, cost regret correlates $-0.933$ with 90
     title style={font=\small\bfseries,yshift=-0.2cm},
     every axis plot/.append style={line width=1.1pt},
 ]
-\addplot[color=energygreen,mark=*,mark size=2pt] coordinates {(2,609.32) (5,575.34) (10,551.55) (20,539.52) (50,530.18) (100,527.76)};
+\addplot[color=okverm,mark=*,mark size=2pt] coordinates {(2,609.32) (5,575.34) (10,551.55) (20,539.52) (50,530.18) (100,527.76)};
 \addlegendentry{HFM (ours)}
-\addplot[color=iclrblue,mark=square*,mark size=2pt] coordinates {(2,560.72) (5,552.22) (10,548.01) (20,546.74) (50,544.66) (100,544.28)};
+\addplot[color=okblue,mark=square*,mark size=2pt] coordinates {(2,560.72) (5,552.22) (10,548.01) (20,546.74) (50,544.66) (100,544.28)};
 \addlegendentry{FM}
-\addplot[color=warnred,mark=diamond*,mark size=2pt] coordinates {(2,612.70) (5,582.85) (10,568.04) (20,562.23) (50,556.94) (100,555.40)};
+\addplot[color=okpurple,mark=diamond*,mark size=2pt] coordinates {(2,612.70) (5,582.85) (10,568.04) (20,562.23) (50,556.94) (100,555.40)};
 \addlegendentry{FM+PCFM}
 \end{axis}
 \end{tikzpicture}

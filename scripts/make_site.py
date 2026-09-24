@@ -6,11 +6,15 @@ and every plotted point is read from `results/*.jsonl`, so the page cannot
 drift from the runs.
 """
 from __future__ import annotations
-import json, math, os
+import json, math, os, sys
 from collections import defaultdict
 
 import numpy as np
 from scipy.stats import spearmanr
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from figures import (fig_signflip, fig_pareto, fig_regret, fig_frontier,
+                     fig_ranking, paired_ci)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "results")
@@ -59,121 +63,29 @@ def g(x, sig=4):
     return f"{x:.{sig}g}"
 
 
-# --------------------------------------------------------------------- charts
-def flip_chart(meta, mains):
-    methods = ["HFM (ours)", "FM+reduced", "FM+DC3", "FM+PCFM", "FM+posthoc"]
-    colors = [ORANGE, BLUE, "#8E7CC3", "#5AAB6B", "#C95F7A"]
-    W, H, PADL, PADB, PADT = 760, 350, 66, 62, 20
-    pts = []
-    for mi, meth in enumerate(methods):
-        for sname, _ in SUITES:
-            r = paired(mains[sname], meth, "FM")
-            if r:
-                pts.append((meta[sname]["codim_frac"], r[0], mi, sname, r[1]))
-    if not pts:
-        return ""
-    lo, hi = min(p[1] for p in pts), max(p[1] for p in pts)
-    pad = (hi - lo) * 0.18 or 1
-    lo, hi = lo - pad, hi + pad
-    X = lambda c: PADL + c / 0.72 * (W - PADL - 28)
-    Y = lambda v: PADT + (hi - v) / (hi - lo) * (H - PADT - PADB)
-    o = [f'<svg viewBox="0 0 {W} {H}" class="fig-svg" role="img" aria-label="Paired '
-         f'change in energy score versus constraint codimension">']
-    o.append(f'<rect x="{PADL}" y="{PADT}" width="{W-PADL-28}" height="{H-PADT-PADB}" '
-             f'fill="#f7f9fb" stroke="#e6ebf0" rx="8"/>')
-    o.append(f'<line x1="{PADL}" y1="{Y(0):.1f}" x2="{W-28}" y2="{Y(0):.1f}" '
-             f'stroke="#4a4a4a" stroke-width="1.4" opacity=".6"/>')
-    o.append(f'<text x="{PADL+8}" y="{Y(0)-8:.1f}" class="cap">no effect</text>')
-    for v in np.linspace(lo, hi, 5):
-        o.append(f'<text x="{PADL-10}" y="{Y(v)+4:.1f}" class="tick" '
-                 f'text-anchor="end">{v:+.0f}%</text>')
-    for (sname, label), c in zip(SUITES, [meta[s]["codim_frac"] for s, _ in SUITES]):
-        o.append(f'<line x1="{X(c):.1f}" y1="{H-PADB}" x2="{X(c):.1f}" y2="{H-PADB+5}" '
-                 f'stroke="#b5b5b5"/>')
-        o.append(f'<text x="{X(c):.1f}" y="{H-PADB+21:.1f}" class="tick" '
-                 f'text-anchor="middle">{esc(label)}</text>')
-        o.append(f'<text x="{X(c):.1f}" y="{H-PADB+36:.1f}" class="cap" '
-                 f'text-anchor="middle">codim {c:.3f}</text>')
-    for mi, meth in enumerate(methods):
-        seq = sorted([p for p in pts if p[2] == mi], key=lambda p: p[0])
-        if len(seq) > 1:
-            d = " ".join(f"{'M' if i==0 else 'L'}{X(p[0]):.1f},{Y(p[1]):.1f}"
-                         for i, p in enumerate(seq))
-            o.append(f'<path d="{d}" fill="none" stroke="{colors[mi]}" stroke-width="2.2" '
-                     f'opacity=".85"/>')
-        for p in seq:
-            sig = abs(p[4]) > T_CRIT_9
-            o.append(f'<circle cx="{X(p[0]):.1f}" cy="{Y(p[1]):.1f}" r="{6 if sig else 4.5}" '
-                     f'fill="{colors[mi] if sig else "#fff"}" stroke="{colors[mi]}" '
-                     f'stroke-width="2.2"><title>{esc(meth)} on {esc(p[3])}: '
-                     f'{p[1]:+.2f}% (t={p[4]:+.2f})</title></circle>')
-    cy = PADT + (H - PADT - PADB) / 2
-    o.append(f'<text x="16" y="{cy:.0f}" class="axis" transform="rotate(-90 16 {cy:.0f})" '
-             f'text-anchor="middle">&#916; energy score vs unconstrained FM</text>')
-    o.append("</svg>")
-    leg = " ".join(f'<span class="key"><i style="background:{colors[i]}"></i>{esc(m)}</span>'
-                   for i, m in enumerate(methods))
-    note = '<span class="key note">filled = significant at 5% (paired, 10 seeds)</span>'
-    return "".join(o) + f'<div class="legend">{leg}{note}</div>'
-
-
-def regret_chart(down, measured):
-    reg = defaultdict(list)
-    for r in down:
-        if r.get("regret_pct") is not None and "[det-mean]" not in r["method"]:
-            reg[r["method"]].append(r["regret_pct"])
-    cov = defaultdict(list)
-    for r in measured:
-        cov[r["method"]].append(r["cov90"])
-    pts = [(float(np.mean(cov[m])), float(np.mean(reg[m])), m) for m in reg if m in cov]
-    if not pts:
-        return "", None, None
-    W, H, PADL, PADB, PADT, PADR = 760, 380, 66, 60, 20, 128
-    xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
-    x0, x1 = min(xs) - .04, max(xs) + .04
-    y1 = max(ys) * 1.12
-    X = lambda v: PADL + (v - x0) / (x1 - x0) * (W - PADL - PADR)
-    Y = lambda v: PADT + (y1 - v) / y1 * (H - PADT - PADB)
-    EXACT = {"HFM (ours)", "FM+reduced", "FM+DC3", "FM+PCFM", "FM+posthoc"}
-    o = [f'<svg viewBox="0 0 {W} {H}" class="fig-svg" role="img" aria-label="Unit '
-         f'commitment cost regret versus 90 percent coverage">']
-    o.append(f'<rect x="{PADL}" y="{PADT}" width="{W-PADL-PADR}" height="{H-PADT-PADB}" '
-             f'fill="#f7f9fb" stroke="#e6ebf0" rx="8"/>')
-    for v in np.linspace(0, y1, 5):
-        o.append(f'<line x1="{PADL}" y1="{Y(v):.1f}" x2="{W-PADR}" y2="{Y(v):.1f}" '
-                 f'stroke="#e6ebf0"/>')
-        o.append(f'<text x="{PADL-10}" y="{Y(v)+4:.1f}" class="tick" '
-                 f'text-anchor="end">{v:.0f}%</text>')
-    for v in np.linspace(x0, x1, 5):
-        o.append(f'<text x="{X(v):.1f}" y="{H-PADB+21:.1f}" class="tick" '
-                 f'text-anchor="middle">{v:.2f}</text>')
-    a, b = np.polyfit(xs, ys, 1)
-    o.append(f'<line x1="{X(x0):.1f}" y1="{Y(a*x0+b):.1f}" x2="{X(x1):.1f}" '
-             f'y2="{Y(a*x1+b):.1f}" stroke="{BLUE}" stroke-width="1.8" '
-             f'stroke-dasharray="6 5" opacity=".8"/>')
-    for x, y, m in pts:
-        ex = m in EXACT
-        o.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="6.5" '
-                 f'fill="{ORANGE if ex else "#fff"}" stroke="{ORANGE if ex else "#9aa5b1"}" '
-                 f'stroke-width="2.2"><title>{esc(m)}: regret {y:.1f}%, '
-                 f'cov90 {x:.3f}</title></circle>')
-        if m in ("HFM (ours)", "FM+reduced", "GaussianCopula", "cWGAN-GP",
-                 "NormFlow-RealNVP", "kNN-Historical"):
-            o.append(f'<text x="{X(x)+11:.1f}" y="{Y(y)+4:.1f}" class="lbl">{esc(m)}</text>')
-    o.append(f'<text x="{PADL+(W-PADL-PADR)/2:.0f}" y="{H-14}" class="axis" '
-             f'text-anchor="middle">90% coverage (calibration) &rarr;</text>')
-    cy = PADT + (H - PADT - PADB) / 2
-    o.append(f'<text x="16" y="{cy:.0f}" class="axis" transform="rotate(-90 16 {cy:.0f})" '
-             f'text-anchor="middle">UC cost regret</text>')
-    o.append("</svg>")
-    leg = (f'<span class="key"><i style="background:{ORANGE}"></i>exactly feasible</span>'
-           f'<span class="key"><i style="background:#fff;border:2px solid #9aa5b1"></i>'
-           f'everything else</span><span class="key note">dashed line = least squares</span>')
-    return "".join(o) + f'<div class="legend">{leg}</div>', \
-        float(np.corrcoef(xs, ys)[0, 1]), spearmanr(xs, ys)
-
-
 CSS = """
+
+.fig{width:100%;height:auto;display:block;margin:0 auto;overflow:visible;
+  --plot-bg:#fbfcfd;--grid-c:#e3e9ef;--fg:#1a1a1a;--muted:#6b7480;--bad:#C41E3A}
+.fig .grid{stroke:var(--grid-c);stroke-width:1}
+.fig .rule{stroke:#8a929c;stroke-width:1.4}
+.fig .rule-lbl{font:600 11px 'Noto Sans',sans-serif;fill:#8a929c}
+.fig .tick{font:12px 'Noto Sans',sans-serif;fill:var(--muted)}
+.fig .lbl{font:12px 'Noto Sans',sans-serif;fill:var(--fg)}
+.fig .series-lbl{font:600 12.5px 'Noto Sans',sans-serif}
+.fig .axis{font:600 12.5px 'Noto Sans',sans-serif;fill:#4a5260}
+.fig .note{font:11.5px 'Noto Sans',sans-serif;fill:var(--muted)}
+.fig .legend-t{font:11.5px 'Noto Sans',sans-serif;fill:var(--muted)}
+.fig circle,.fig rect,.fig polygon,.fig path{vector-effect:non-scaling-stroke}
+.figure{background:#fff;border:1px solid #e9edf1;border-radius:14px;
+  padding:1.5rem 1.3rem 1.2rem;margin:1.6rem 0;box-shadow:0 2px 10px rgba(16,24,40,.05)}
+.figure .fignum{font:700 11px 'Noto Sans',sans-serif;letter-spacing:.1em;
+  text-transform:uppercase;color:#4A90E2;margin-bottom:.35rem}
+.figure .figtitle{font-family:'Google Sans',sans-serif;font-size:1.06rem;
+  font-weight:600;color:#1a1a1a;margin-bottom:1rem;line-height:1.35}
+.figure figcaption{font-size:.855rem;color:#6b7480;line-height:1.6;
+  margin-top:1rem;padding-top:.85rem;border-top:1px solid #eef1f4}
+.figure figcaption b{color:#1a1a1a}
 body{font-family:'Noto Sans',sans-serif}
 .publication-title{font-family:'Google Sans',sans-serif}
 .publication-authors{margin-top:1.1rem}
@@ -252,6 +164,15 @@ def main():
 
     def endsec():
         w("</div></div></div></section>")
+
+    def figure(n, title, svg, caption):
+        w('<figure class="figure">')
+        w(f'<div class="fignum">Figure {n}</div>')
+        w(f'<div class="figtitle">{title}</div>')
+        w(svg)
+        w(f"<figcaption>{caption}</figcaption>")
+        w("</figure>")
+
 
     # ------------------------------------------------------------------ head
     w('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">')
@@ -335,14 +256,24 @@ def main():
     w('<div class="content has-text-justified"><p class="has-text-centered" '
       'style="color:#7a7a7a">Same code, same backbone, same budget. '
       "<b>The effect changes sign.</b></p></div>")
+    figure(1, f"All {nmeth} generators on one scale (<code>grid</code> suite)",
+           fig_ranking(mains, "grid", "grid"),
+           f"Mean energy score over {nseeds} seeds with standard-error bars, ranked. "
+           "Marker shape encodes family, so the grouping survives greyscale and "
+           "colour-vision deficiency. <b>A non-neural baseline "
+           "(<code>kNN-Historical</code>) places second of sixteen.</b>")
     endsec()
 
     # ---------------------------------------------------------------- result 1
     sec("The Effect Changes Sign with Codimension")
-    w(f'<div class="fig-card">{flip_chart(meta, mains)}'
-      f'<p class="caption">Paired change in energy score against unconstrained flow '
-      f"matching, {nseeds} seeds. Hover any point for its paired "
-      "<i>t</i>-statistic.</p></div>")
+    figure(2, "The sign of the constraint effect flips with codimension",
+           fig_signflip(meta, mains),
+           f"Paired change in energy score against unconstrained flow matching, "
+           f"{nseeds} seeds, identical backbone, budget and data. Bars are 95% "
+           f"confidence intervals; filled markers are significant at the 5% level. "
+           f"<b>Train-time projection crosses zero</b> \u2014 significantly worse on "
+           f"<code>measured</code>, significantly better on <code>grid</code>. Hover "
+           f"any marker for its interval and <i>t</i>-statistic.")
     w('<div class="takeaway"><p>The two grid suites are the <b>same</b> 118-bus system '
       "and the same measured injections; the only change is whether the model must also "
       "emit the 186 line flows the constraint matrix determines exactly. That makes the "
@@ -353,8 +284,15 @@ def main():
 
     # ---------------------------------------------------------------- result 2
     sec("Soft Penalties Are Dominated on Both Axes", light=True)
-    w('<div class="tbl-wrap"><table class="data"><thead><tr><th>λ</th><th>ES</th>'
-      "<th>rel. to FM</th><th>‖Ax−b‖<sub>∞</sub> (MW)</th></tr></thead><tbody>")
+    figure(3, "Feasibility and fidelity on one plane",
+           fig_pareto(mains),
+           "Every penalty setting sits above and to the right of the exact routes: "
+           "worse energy score <i>and</i> a violation four orders of magnitude larger. "
+           "Raising \u03bb walks the family <b>up</b> the fidelity axis without moving "
+           "it left on the feasibility axis. Suite: <code>grid</code>.")
+    w('<div class="tbl-wrap"><table class="data"><thead><tr><th>\u03bb</th><th>ES</th>'
+      "<th>rel. to FM</th><th>\u2016Ax\u2212b\u2016<sub>\u221e</sub> (MW)</th>"
+      "</tr></thead><tbody>")
     base = mean_of(mains["grid"], "FM")
     for lam in [1, 10, 100, 1000]:
         m = f"FM+penalty({lam})"
@@ -362,32 +300,42 @@ def main():
         d = 100 * (es - base) / base
         w(f"<tr><td>{lam}</td><td>{g(es)}</td>"
           f'<td class="bad">{d:+.1f}%</td><td>{g(eq,3)}</td></tr>')
+    hes = mean_of(mains["grid"], "HFM (ours)")
+    heq = mean_of(mains["grid"], "HFM (ours)", "eq_max")
+    w(f'<tr class="ours"><td>train-time</td><td><b>{g(hes)}</b></td>'
+      f'<td class="good">{100*(hes-base)/base:+.1f}%</td>'
+      f"<td><b>{g(heq,3)}</b></td></tr>")
     w("</tbody></table></div>")
     e1 = mean_of(mains["grid"], "FM+penalty(1)", "eq_max")
     e1k = mean_of(mains["grid"], "FM+penalty(1000)", "eq_max")
     dg = 100 * (mean_of(mains["grid"], "FM+penalty(1000)") - base) / base
-    w(f'<div class="takeaway"><p>Three orders of magnitude of λ move the violation from '
-      f"{e1:.3g}&nbsp;MW to {e1k:.3g}&nbsp;MW &mdash; the same order, still "
-      f"unacceptable &mdash; while the score degrades to <b>{dg:+.0f}%</b>. "
-      "<b>There is no λ to tune.</b> Every exact route beats the entire penalty family "
-      "on feasibility <i>and</i> fidelity at once.</p></div>")
+    w(f'<div class="takeaway"><p>Three orders of magnitude of \u03bb move the violation '
+      f"from {e1:.3g}\u00a0MW to {e1k:.3g}\u00a0MW \u2014 the same order, still "
+      f"unacceptable \u2014 while the score degrades to <b>{dg:+.0f}%</b>. "
+      "<b>There is no \u03bb to tune.</b></p></div>")
     endsec()
 
     # ---------------------------------------------------------------- result 3
     sec("Feasibility Is Not Decision Value")
-    svg, r_cov, sp = regret_chart(down, mains["measured"])
-    w(f'<div class="fig-card">{svg}<p class="caption">Two-stage stochastic unit '
-      "commitment. Each point is one generator.</p></div>")
+    figure(4, "Decision value tracks calibration, not feasibility",
+           fig_regret(down, mains["measured"]),
+           "Two-stage stochastic unit commitment: commitment frozen on the generated "
+           "scenarios, scored on the realised day, regret against perfect foresight. "
+           "<b>The exactly-feasible routes are the sharpest and the most expensive.</b> "
+           "Correlation statistics are printed on the panel.")
     reg = defaultdict(list)
     for r in down:
         if r.get("regret_pct") is not None and "[det-mean]" not in r["method"]:
             reg[r["method"]].append(r["regret_pct"])
-    esm = defaultdict(list)
+    esm, cov = defaultdict(list), defaultdict(list)
     for r in mains["measured"]:
         esm[r["method"]].append(r["energy_score"])
-    pts = [(np.mean(esm[m]), np.mean(reg[m])) for m in reg if m in esm]
-    sp_es = spearmanr([p[0] for p in pts], [p[1] for p in pts])
-    r_es = float(np.corrcoef([p[0] for p in pts], [p[1] for p in pts])[0, 1])
+        cov[r["method"]].append(r["cov90"])
+    pr = [(np.mean(cov[m]), np.mean(esm[m]), np.mean(reg[m])) for m in reg if m in cov]
+    r_cov = float(np.corrcoef([q[0] for q in pr], [q[2] for q in pr])[0, 1])
+    r_es = float(np.corrcoef([q[1] for q in pr], [q[2] for q in pr])[0, 1])
+    sp = spearmanr([q[0] for q in pr], [q[2] for q in pr])
+    sp_es = spearmanr([q[1] for q in pr], [q[2] for q in pr])
     w('<div class="stat-grid">')
     w(f'<div class="stat"><span class="v good">{r_cov:+.3f}</span><span class="k">'
       f"regret vs <b>calibration</b><br>Spearman ρ&nbsp;=&nbsp;{sp.statistic:+.2f}, "
@@ -406,6 +354,34 @@ def main():
       f"the opposite. Limit: {max(len(v) for v in reg.values())} seeds on this stage, "
       f"not {nseeds}.</p></div>")
     endsec()
+
+    # ---------------------------------------------------------------- result 4
+    if eff:
+        fm_best = min((r for r in eff if r["method"] == "FM"),
+                      key=lambda r: r["energy_score"])
+        cheap = min((r for r in eff if r["method"].startswith("HFM")
+                     and r["energy_score"] <= fm_best["energy_score"]),
+                    key=lambda r: r["nfe"])
+        sec("Exactness Is Free in Function Evaluations", light=True)
+        figure(5, "Accuracy per function evaluation",
+               fig_frontier(eff),
+               f"NFE and analytic FLOPs are exactly countable and hardware-independent, "
+               f"so we report those rather than device joules. <b>Train-time projection "
+               f"dominates at every budget</b>, reaching a better score at NFE "
+               f"{cheap['nfe']} than unconstrained flow matching reaches at NFE "
+               f"{fm_best['nfe']}. Suite: <code>grid</code>.")
+        w('<div class="stat-grid">')
+        w(f'<div class="stat"><span class="v">'
+          f'{fm_best["nfe"]/max(cheap["nfe"],1):.0f}&times;</span><span class="k">'
+          f"fewer function evaluations, for a better score</span></div>")
+        w('<div class="stat"><span class="v">0</span><span class="k">extra NFE for the '
+          "projector route, against 51 extra projections for inference-time correction "
+          "on a 50-step solve</span></div>")
+        w(f'<div class="stat"><span class="v good">{cheap["eq_max"]:.1e}</span>'
+          f'<span class="k">MW worst-case violation, against '
+          f'{fm_best["eq_max"]:.0f}&nbsp;MW unconstrained</span></div>')
+        w("</div>")
+        endsec()
 
     # ------------------------------------------------------------- falsified
     sec("What We Predicted, and Got Wrong", light=True)

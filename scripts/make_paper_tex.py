@@ -11,6 +11,9 @@ from collections import defaultdict
 
 import numpy as np
 from scipy.stats import spearmanr
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from figures import paired_ci
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "results")
@@ -97,28 +100,64 @@ def bibitems():
 
 # ------------------------------------------------------------------- figures
 def fig_signflip(meta, mains):
-    """Codimension vs paired %DES, the paper's central figure."""
-    methods = [("HFM (ours)", "energygreen", "*"), ("FM+reduced", "iclrblue", "square*"),
-               ("FM+DC3", "warnred", "triangle*"), ("FM+PCFM", "gray", "diamond*")]
-    L = [r"\begin{tikzpicture}", r"\begin{axis}[", "    width=11cm, height=6.4cm,",
+    """Codimension vs paired %DES with 95% CIs -- the paper's central figure."""
+    methods = [("HFM (ours)", "okverm", "*"), ("FM+reduced", "okblue", "square*"),
+               ("FM+DC3", "okgreen", "triangle*"), ("FM+PCFM", "okpurple", "diamond*")]
+    L = [r"\begin{tikzpicture}", r"\begin{axis}[", "    width=12cm, height=6.8cm,",
          r"    xlabel={Constraint codimension $r/D$},",
          r"    ylabel={$\Delta$ES vs unconstrained FM (\%)},",
-         "    xmin=0.02, xmax=0.72, grid=major, axis lines=left,",
-         r"    legend style={at={(0.5,-0.24)},anchor=north,legend columns=-1,font=\footnotesize},",
+         "    xmin=0.02, xmax=0.78, grid=major, axis lines=left,",
+         r"    legend style={at={(0.5,-0.26)},anchor=north,legend columns=-1,font=\footnotesize},",
          r"    title={\textbf{The sign of the constraint effect flips with codimension}},",
          r"    title style={font=\small\bfseries,yshift=-0.2cm},",
-         "    every axis plot/.append style={line width=1.1pt},", "]",
-         r"\draw[black,dashed,thick] (axis cs:0.02,0) -- (axis cs:0.72,0);"]
+         "    every axis plot/.append style={line width=1.1pt},",
+         "    error bars/y dir=both, error bars/y explicit,", "]",
+         r"\addplot[black,dashed,thick,forget plot] coordinates {(0.02,0) (0.78,0)};",
+         r"\node[anchor=west,font=\scriptsize,gray] at (axis cs:0.03,0.45) {no effect};"]
     for name, col, mk in methods:
-        pts = []
-        for s in SUITES:
-            r = paired(mains[s], name, "FM")
+        rows_ = []
+        for s_ in SUITES:
+            r = paired_ci(mains[s_], name, "FM")
             if r:
-                pts.append((meta[s]["codim_frac"], r[0]))
-        pts.sort()
-        coords = " ".join(f"({c:.3f},{v:.3f})" for c, v in pts)
-        L.append(f"\\addplot[color={col},mark={mk},mark size=2.2pt] coordinates {{{coords}}};")
+                pct, lo, hi, t, n = r
+                rows_.append((meta[s_]["codim_frac"], pct, pct - lo, hi - pct))
+        rows_.sort()
+        coords = " ".join(f"({c:.3f},{v:.3f}) +- (0,{up:.3f})"
+                          for c, v, dn, up in rows_)
+        L.append(f"\\addplot[color={col},mark={mk},mark size=2.4pt] coordinates "
+                 f"{{{coords}}};")
         L.append(f"\\addlegendentry{{{texesc(name)}}}")
+    L += [r"\end{axis}", r"\end{tikzpicture}"]
+    return "\n".join(L)
+
+
+def fig_pareto(mains):
+    """Violation vs fidelity: the penalty family is dominated on both axes."""
+    rows = mains["grid"]
+    L = [r"\begin{tikzpicture}", r"\begin{axis}[", "    width=12cm, height=6.4cm,",
+         r"    xlabel={Worst-case violation $\|Ax-b\|_\infty$ (MW, log scale)},",
+         r"    ylabel={Energy score $\downarrow$},",
+         "    xmode=log, grid=major, axis lines=left,",
+         r"    legend style={at={(0.5,-0.26)},anchor=north,legend columns=-1,font=\footnotesize},",
+         r"    title={\textbf{Every penalty setting is dominated on both axes}},",
+         r"    title style={font=\small\bfseries,yshift=-0.2cm},", "]"]
+    pen = [(lam, mean_of(rows, f"FM+penalty({lam})"),
+            mean_of(rows, f"FM+penalty({lam})", "eq_max")) for lam in (1, 10, 100, 1000)]
+    L.append("\\addplot[color=okpurple,mark=diamond*,mark size=2.6pt,dashed] "
+             "coordinates {" + " ".join(f"({eq:.4g},{es:.3f})" for _, es, eq in pen) + "};")
+    L.append(r"\addlegendentry{soft penalty}")
+    for lam, es, eq in pen:
+        L.append(f"\\node[anchor=west,font=\\scriptsize,okpurple] at "
+                 f"(axis cs:{eq:.4g},{es:.3f}) {{~$\\lambda={lam}$}};")
+    ex = [(n, mean_of(rows, n), mean_of(rows, n, "eq_max")) for n in
+          ("HFM (ours)", "FM+reduced", "FM+DC3", "FM+PCFM", "FM+posthoc")]
+    L.append("\\addplot[only marks,color=okverm,mark=*,mark size=2.6pt] coordinates {"
+             + " ".join(f"({eq:.4g},{es:.3f})" for _, es, eq in ex) + "};")
+    L.append(r"\addlegendentry{exact routes}")
+    fm_es, fm_eq = mean_of(rows, "FM"), mean_of(rows, "FM", "eq_max")
+    L.append(f"\\addplot[only marks,color=black,mark=x,mark size=3.4pt] coordinates "
+             f"{{({fm_eq:.4g},{fm_es:.3f})}};")
+    L.append(r"\addlegendentry{unconstrained FM}")
     L += [r"\end{axis}", r"\end{tikzpicture}"]
     return "\n".join(L)
 
@@ -145,10 +184,10 @@ def fig_regret(down, measured):
          r"    title style={font=\small\bfseries,yshift=-0.2cm},", "]",
          f"\\addplot[color=black,dashed,line width=0.9pt,forget plot] coordinates "
          f"{{({x0:.3f},{a*x0+b:.2f}) ({x1:.3f},{a*x1+b:.2f})}};"]
-    L.append("\\addplot[only marks,mark=*,mark size=2.6pt,color=energygreen] coordinates {"
+    L.append("\\addplot[only marks,mark=*,mark size=2.6pt,color=okverm] coordinates {"
              + " ".join(f"({x:.3f},{y:.2f})" for x, y in ex) + "};")
     L.append(r"\addlegendentry{exactly feasible}")
-    L.append("\\addplot[only marks,mark=o,mark size=2.6pt,color=iclrblue] coordinates {"
+    L.append("\\addplot[only marks,mark=o,mark size=2.6pt,color=okblue] coordinates {"
              + " ".join(f"({x:.3f},{y:.2f})" for x, y in ot) + "};")
     L.append(r"\addlegendentry{all other generators}")
     L += [r"\end{axis}", r"\end{tikzpicture}"]
@@ -163,8 +202,8 @@ def fig_frontier(eff):
          r"    title={\textbf{Accuracy--NFE frontier (\dataset{grid})}},",
          r"    title style={font=\small\bfseries,yshift=-0.2cm},",
          "    every axis plot/.append style={line width=1.1pt},", "]"]
-    for meth, col, mk in [("HFM (ours)", "energygreen", "*"), ("FM", "iclrblue", "square*"),
-                          ("FM+PCFM", "warnred", "diamond*")]:
+    for meth, col, mk in [("HFM (ours)", "okverm", "*"), ("FM", "okblue", "square*"),
+                          ("FM+PCFM", "okpurple", "diamond*")]:
         pts = sorted({(r["nfe"], r["energy_score"]) for r in eff
                       if r["method"] == meth and r["solver"] == "euler"})
         if len(pts) < 2:
@@ -184,8 +223,8 @@ def fig_penalty(mains):
          r"    title={\textbf{Raising $\lambda$ costs fidelity without buying feasibility}},",
          r"    title style={font=\small\bfseries,yshift=-0.2cm},",
          "    every axis plot/.append style={line width=1.1pt},", "]"]
-    for s, col, mk in [("grid", "energygreen", "*"), ("measured", "iclrblue", "square*"),
-                       ("grid_noflow", "warnred", "triangle*")]:
+    for s, col, mk in [("grid", "okverm", "*"), ("measured", "okblue", "square*"),
+                       ("grid_noflow", "okgreen", "triangle*")]:
         base = mean_of(mains[s], "FM")
         pts = []
         for lam in [1, 10, 100, 1000]:
@@ -233,11 +272,19 @@ PREAMBLE = r"""% ============================================
 \sisetup{per-mode=symbol,group-separator={,}}
 
 \usepackage{xcolor}
-\definecolor{iclrblue}{HTML}{0055A4}
-\definecolor{energygreen}{HTML}{2A7B3C}
-\definecolor{warnred}{HTML}{C41E3A}
+% Okabe-Ito: colourblind-safe under protan, deutan and tritan vision.
+\definecolor{okorange}{HTML}{E69F00}
+\definecolor{oksky}{HTML}{56B4E9}
+\definecolor{okgreen}{HTML}{009E73}
+\definecolor{okblue}{HTML}{0072B2}
+\definecolor{okverm}{HTML}{D55E00}
+\definecolor{okpurple}{HTML}{CC79A7}
+% aliases kept so existing colour names still resolve
+\colorlet{iclrblue}{okblue}
+\colorlet{energygreen}{okgreen}
+\colorlet{warnred}{okverm}
 
-\usepackage[colorlinks=true,linkcolor=iclrblue,urlcolor=iclrblue,citecolor=energygreen]{hyperref}
+\usepackage[colorlinks=true,linkcolor=okblue,urlcolor=okblue,citecolor=okverm]{hyperref}
 \usepackage{url}
 
 \usepackage{algorithm}
@@ -535,7 +582,7 @@ since \dataset{grid\_noflow} has the widest scale spread """
     # ------------------------------------------------------------- penalties
     w(r"\subsection{Soft penalties are dominated on both axes}")
     w(r"\begin{figure}[t]\centering")
-    w(fig_penalty(mains))
+    w(fig_pareto(mains))
     w(r"\caption{\textbf{There is no $\lambda$ to tune.} Energy-score degradation grows "
       r"monotonically with the penalty weight on all three suites, while the worst-case "
       r"violation stays at the same order of magnitude (Table~\ref{tab:penalty}).}"
