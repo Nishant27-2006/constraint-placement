@@ -73,7 +73,7 @@ def texesc(s):
     return s.replace("_", r"\_").replace("&", r"\&").replace("%", r"\%")
 
 
-# ------------------------------------------------------------------ bibliography
+# , , , , , , , , , , , , , , , , , , , , , ,  bibliography
 def bibitems():
     src = open(os.path.join(ROOT, "paper", "references.bib")).read()
     out = []
@@ -98,7 +98,7 @@ def bibitems():
     return "\n\n".join(out)
 
 
-# ------------------------------------------------------------------- figures
+# , , , , , , , , , , , , , , , , , , , , , , - figures
 def fig_signflip(meta, mains):
     """Codimension vs paired %DES with 95% CIs -- the paper's central figure."""
     methods = [("HFM (ours)", "okverm", "*"), ("FM+reduced", "okblue", "square*"),
@@ -260,10 +260,8 @@ PREAMBLE = r"""% ============================================
 
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,calc,fit,shapes.geometric,backgrounds,decorations.pathreplacing}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18,axis lines=left,grid=both,
-  grid style={line width=0.1pt,draw=gray!30},
-  major grid style={line width=0.2pt,draw=gray!50}}
+\usepackage{graphicx}
+\graphicspath{{figures/}{../figures/}}
 \usepackage{subcaption}
 \usepackage{graphicx}
 
@@ -360,18 +358,18 @@ def main():
     L = [PREAMBLE]
     w = L.append
 
-    # ------------------------------------------------------------- abstract
+    # , , , , , , , , , , , , , , , , , , , , - abstract
     w(r"\begin{abstract}")
     w("Generative models are increasingly used to produce operational scenarios for "
       "power systems, and such scenarios must satisfy the physical laws they describe: "
-      "a set of injections that violates Kirchhoff's laws is not a conservative "
-      "forecast but an impossible one. Several methods achieve \\emph{exact} "
+      "an injection pattern that violates Kirchhoff's laws cannot occur on any "
+      "real network. Several methods achieve \\emph{exact} "
       "satisfaction of affine physical invariants. The question the field has not "
       "answered is \\textbf{where the constraint belongs}: in the hypothesis class "
       "(train-time projection), at inference (zero-shot correction), in the loss "
       "(penalty), or in the coordinates (nullspace or completion). ")
-    w("We answer it. Building the constraint into the hypothesis class --- an "
-      "orthogonal projection of the velocity field onto the constraint nullspace --- is "
+    w("We answer it by building the constraint into the hypothesis class, as an "
+      "orthogonal projection of the velocity field onto the constraint nullspace. This is "
       "\\textbf{exact under any Runge--Kutta scheme, excludes no minimiser of the "
       "flow-matching objective, and costs zero additional function evaluations} "
       "(Theorem~\\ref{thm:affine}). ")
@@ -388,7 +386,7 @@ def main():
       f"\\textbf{{codimension}} of the constraint set. On a controlled contrast in "
       f"which the only change is how much of the state the physics determines, "
       f"train-time projection moves from neutral to decisive. Soft penalties, the "
-      f"field's default, are dominated on both axes simultaneously: raising $\\lambda$ "
+      f"field's default, lose on both axes at once. Raising $\\lambda$ "
       f"from 1 to 1000 moves the violation only from {e1:.3g}\\,MW to {e1k:.3g}\\,MW "
       f"while degrading the energy score by ${dg:+.0f}\\%$. We further contribute the "
       f"first decision-level evaluation of constraint-exact scenario generation, "
@@ -399,10 +397,10 @@ def main():
       r"constraints, power systems, scenario generation, benchmark design.")
     w("")
 
-    # --------------------------------------------------------- introduction
+    # , , , , , , , , , , , , , , , , , , ,  introduction
     w(r"\section{Introduction}\label{sec:intro}")
-    w("Scenario generation --- sampling plausible 24-hour trajectories of load and "
-      "renewable output --- is a core subroutine in stochastic unit commitment and "
+    w("Scenario generation, sampling plausible 24-hour trajectories of load and "
+      "renewable output, is a core subroutine in stochastic unit commitment and "
       "risk-constrained dispatch. Diffusion models \\cite{ho2020denoising,song2021scoresde} "
       "and flow matching \\cite{lipman2023flow} produce high-fidelity samples, but a "
       "sample that violates power balance is not merely inaccurate: it is inadmissible "
@@ -445,7 +443,7 @@ def main():
       r"and hardware-independent.")
     w("")
 
-    # ------------------------------------------------------------ framework
+    # , , , , , , , , , , , , , , , , , , , ,  framework
     w(r"\section{Where a Constraint Can Go}\label{sec:routes}")
     w(r"""Scenarios live in $\mathcal X=\mathbb R^{T\times D}$ with an affine invariant
 $\mathcal C=\{x: Ax=b\}$ encoding power balance and the flow definitions.
@@ -473,7 +471,7 @@ minimiser; \emph{(iii)} for every $v$ with finite second moment,
 $\mathcal L_{\mathrm{FM}}(\Pi_V v)=\mathcal L_{\mathrm{FM}}(v)-\mathbb E\|(I-\Pi_V)v\|^2
 \le\mathcal L_{\mathrm{FM}}(v)$, with equality iff $v$ is $V$-valued; and
 \emph{(iv)} if $x\in\mathcal C$ and an integrator forms $x^{+}=x+h\sum_i b_ik_i$ with
-every stage $k_i$ an evaluation of a $V$-valued field, then $x^{+}\in\mathcal C$ ---
+every stage $k_i$ an evaluation of a $V$-valued field, then $x^{+}\in\mathcal C$ , 
 for any step size, stage count or order.""")
     w(r"\end{theorem}")
     w("")
@@ -490,7 +488,7 @@ Full proofs are in the supplement.
     w(r"""Part (iv) is why exactness is \emph{free}: $\Pi_V$ is one cached $D\times D$
 matrix per hour, applied as a single matvec inside each network evaluation, adding
 \textbf{zero} function evaluations. Inference-time correction, by contrast, inserts a
-projection inside every solver step --- 51 additional projections for a 50-step solve.""")
+projection inside every solver step, 51 additional projections for a 50-step solve.""")
     w("")
     w(r"""\begin{proposition}[Drift on a nonlinear manifold]\label{prop:manifold}
 Let $\mathcal M=\{x:g(x)=0\}$ with $g\in C^2$ and $J=\nabla g$ of full row rank. For a
@@ -503,7 +501,7 @@ statement suggests.
 \end{proposition}""")
     w("")
 
-    # ------------------------------------------------------------ benchmark
+    # , , , , , , , , , , , , , , , , , , , ,  benchmark
     w(r"\section{Benchmark}\label{sec:benchmark}")
     w(r"""All suites are built from public data with no API key: EIA-930 hourly
 balancing-authority operating data (2019-01-02 to 2024-06-30) and the pglib-opf IEEE
@@ -534,18 +532,18 @@ exactly. The contrast is therefore causal rather than correlational.""")
       "$\\lambda\\in\\{1,10,100,1000\\}$; post-hoc projection; inference-time correction "
       "in the style of \\cite{utkarsh2025pcfm}; DC3-style completion \\cite{donti2021dc3}; "
       "a reduced nullspace chart; train-time projection (ours); and classical and deep "
-      "baselines --- Gaussian copula, $k$-NN historical resampling, cVAE, cWGAN-GP "
+      "baselines, Gaussian copula, $k$-NN historical resampling, cVAE, cWGAN-GP "
       "\\cite{arjovsky2017wgan}, RealNVP-style normalising flows "
       "\\cite{dumas2022normflows,cramer2022pcanf} and DDPM \\cite{ho2020denoising}. "
-      "Scoring uses strictly proper rules --- energy score and variogram score "
-      "\\cite{gneiting2007strictly,gneiting2008energyscore,scheuerer2015variogram} --- "
+      "Scoring uses strictly proper rules, energy score and variogram score "
+      "\\cite{gneiting2007strictly,gneiting2008energyscore,scheuerer2015variogram}, "
       "plus calibration and worst-case constraint violation.")
     w("")
-    # --------------------------------------------------------------- results
+    # , , , , , , , , , , , , , , , , , , , , ,  results
     w(r"\section{Results}\label{sec:results}")
     w(r"\subsection{The sign of the constraint effect flips with codimension}")
     w(r"\begin{figure}[t]\centering")
-    w(fig_signflip(meta, mains))
+    w(r"\includegraphics[width=\linewidth]{fig2_signflip.pdf}")
     w(r"\caption{\textbf{The paper's central result.} Paired-by-seed change in energy "
       r"score against unconstrained flow matching, identical backbone and budget, "
       f"{nseeds} seeds. Points below zero are improvements. Train-time projection "
@@ -585,22 +583,22 @@ exactly. The contrast is therefore causal rather than correlational.""")
       f"$t={fl['measured'][1]:+.2f}$).")
     w("")
     w(r"""\paragraph{What the third suite does and does not establish.} \dataset{measured}
-is a different data-generating process --- EIA-930 accounting identities across six
-balancing authorities rather than Kirchhoff's laws on a synthetic network --- so it is a
+is a different data-generating process, EIA-930 accounting identities across six
+balancing authorities rather than Kirchhoff's laws on a synthetic network, so it is a
 confounded third point, not a third rung of one ladder. We therefore do \emph{not} claim
 that codimension is the only factor that matters. It establishes something sharper: the
 regime boundary is real, so a single universal recommendation is not available and
 codimension is the quantity that tells you which side you are on. One competing
-explanation is ruled out directly --- channel scale heterogeneity does not account for
+explanation is ruled out directly, channel scale heterogeneity does not account for
 the pattern, since \dataset{grid\_noflow} has the widest scale spread """
       f"({meta['grid_noflow']['scale_ratio_max_over_median']:.0f}$\\times$) and shows no "
       r"effect.")
     w("")
 
-    # ------------------------------------------------------------- penalties
+    # , , , , , , , , , , , , , , , , , , , , - penalties
     w(r"\subsection{Soft penalties are dominated on both axes}")
     w(r"\begin{figure}[t]\centering")
-    w(fig_pareto(mains))
+    w(r"\includegraphics[width=\linewidth]{fig3_pareto.pdf}")
     w(r"\caption{\textbf{There is no $\lambda$ to tune.} Energy-score degradation grows "
       r"monotonically with the penalty weight on all three suites, while the worst-case "
       r"violation stays at the same order of magnitude (Table~\ref{tab:penalty}).}"
@@ -626,17 +624,17 @@ the pattern, since \dataset{grid\_noflow} has the widest scale spread """
     w(r"\bottomrule\end{tabular}\end{table}")
     w("")
     w(f"Raising $\\lambda$ from 1 to 1000 moves the worst-case violation only from "
-      f"{e1:.3g}\\,MW to {e1k:.3g}\\,MW --- both operationally unusable --- while the "
+      f"{e1:.3g}\\,MW to {e1k:.3g}\\,MW, both operationally unusable, while the "
       f"energy score degrades by ${dg:+.0f}\\%$. Every exact route beats the entire "
       f"penalty family on feasibility \\emph{{and}} fidelity simultaneously. Since soft "
       f"penalties are the default in physics-informed generative modelling, this is the "
       f"result with the most immediate practical consequence.")
     w("")
 
-    # -------------------------------------------------------------- decision
+    # , , , , , , , , , , , , , , , , , , , , -- decision
     w(r"\subsection{Feasibility is not decision value}\label{sec:decision}")
     w(r"\begin{figure}[t]\centering")
-    w(fig_regret(down, mains["measured"]))
+    w(r"\includegraphics[width=\linewidth]{fig4_regret.pdf}")
     w(r"\caption{\textbf{Cost regret tracks calibration, not feasibility.} Two-stage "
       r"stochastic unit commitment \cite{conejo2010decision}; commitment frozen on the "
       r"generated scenarios and scored on the realised day. Each marker is one "
@@ -682,14 +680,14 @@ the pattern, since \dataset{grid\_noflow} has the widest scale spread """
       f"the middle of Table~\\ref{{tab:uc}} is not resolved.")
     w("")
 
-    # ------------------------------------------------------------ efficiency
+    # , , , , , , , , , , , , , , , , , , , ,  efficiency
     if eff:
         fm_best = min((r for r in eff if r["method"] == "FM"), key=lambda r: r["energy_score"])
         cheap = min((r for r in eff if r["method"].startswith("HFM")
                      and r["energy_score"] <= fm_best["energy_score"]), key=lambda r: r["nfe"])
         w(r"\subsection{Exactness is free in function evaluations}")
         w(r"\begin{figure}[t]\centering")
-        w(fig_frontier(eff))
+        w(r"\includegraphics[width=\linewidth]{fig5_frontier.pdf}")
         w(r"\caption{\textbf{Accuracy--NFE frontier.} NFE and analytic FLOPs are exactly "
           r"countable and hardware-independent, so we report those rather than device "
           r"joules. Train-time projection dominates at every budget.}\label{fig:frontier}")
@@ -707,7 +705,7 @@ the pattern, since \dataset{grid\_noflow} has the widest scale spread """
           f"known in closed form.")
         w("")
 
-    # ------------------------------------------------------- settled questions
+    # , , , , , , , , , , , , , , , , , , - settled questions
     w(r"\section{What the Benchmark Settles}\label{sec:settled}")
     w(r"""Every hypothesis was registered with its acceptance criteria \emph{before}
 the sweep ran, so the conclusions below are the ones the data selected rather than the
@@ -731,21 +729,21 @@ answered.""")
         eqt = defaultdict(list)
         for r in transfer:
             eqt[(r["method"], r["mode"])].append(r["eq_max"])
-        w(r"\paragraph{Does an $N-1$ outage require retraining? No --- every exact "
+        w(r"\paragraph{Does an $N-1$ outage require retraining? No, every exact "
           r"route transfers zero-shot.} One might expect routes operating in physical "
           r"coordinates to retain their learned distribution when an outage changes the "
           r"PTDF, whereas chart-based "
           f"routes would not. Measured over eight single-branch outages, ours attains "
           f"ES {np.mean(by[('HFM (ours)','swapped')]):.4g} against "
-          f"{np.mean(by[('FM+reduced','swapped')]):.4g} for the nullspace chart --- "
-          f"indistinguishable --- and both are beaten by post-hoc projection at "
+          f"{np.mean(by[('FM+reduced','swapped')]):.4g} for the nullspace chart, "
+          f"indistinguishable, and both are beaten by post-hoc projection at "
           f"{np.mean(by[('FM+posthoc','swapped')]):.4g}. Feasibility after rebuilding "
           f"the chart is structural and available to every exact route "
           f"($\\|A'x-b'\\|_\\infty \\le "
           f"{max(np.mean(eqt[k]) for k in eqt if k[1]=='swapped' and 'penalty' not in k[0] and 'DDPM' not in k[0] and k[0]!='FM'):.1e}$ MW). "
           f"Rebuilding the projector from the contingency PTDF restores exact "
           f"feasibility for physical and chart coordinates alike, so an operator can "
-          f"swap topology without retraining --- a stronger and more useful property "
+          f"swap topology without retraining, a stronger and more useful property "
           f"than a differentiator between the routes would have been.")
         w("")
     if ac:
@@ -761,7 +759,7 @@ answered.""")
           f"Gauss--Newton retraction applied after the solve reduces the mismatch from "
           f"{fmv:.3g} to {rfv:.3g} at no cost in score. Per-step retraction at a budget "
           f"of three iterations reaches only {np.mean([r['nl_max'] for r in m3]):.3g} "
-          f"--- \\emph{{worse than doing nothing}}.")
+          f",  \\emph{{worse than doing nothing}}.")
         if m20:
             w(f" Raising the budget to 20 iterations does not rescue it: the mismatch is "
               f"{np.mean([r['nl_max'] for r in m20]):.3g}, so the failure is not an "
@@ -779,18 +777,18 @@ answered.""")
         w(r"\bottomrule\end{tabular}\end{table}")
         w("")
 
-    # ------------------------------------------------------------ discussion
+    # , , , , , , , , , , , , , , , , , , , ,  discussion
     w(r"\section{Discussion}\label{sec:discussion}")
     w(r"""\paragraph{What practitioners should take away.} If the physics determines a
 large fraction of the state, put the constraint in the hypothesis class: it is exact,
 free in function evaluations, and improves fidelity. If it determines little, any exact
 route works and the cheapest should win. Do not use a soft penalty. And do not assume a
-better proper score will produce better operational decisions --- validate on the
+better proper score will produce better operational decisions, validate on the
 decision.""")
     w("")
     w(r"""\paragraph{A classical baseline is competitive.} $k$-NN historical resampling
---- analogue days, zero parameters, zero function evaluations, exactly feasible by
-construction --- places second of sixteen on both grid suites and beats every GAN, VAE
+,  analogue days, zero parameters, zero function evaluations, exactly feasible by
+construction, places second of sixteen on both grid suites and beats every GAN, VAE
 and normalising flow on all three. We pre-committed to reporting this if it happened.""")
     w("")
     w(r"""\paragraph{Limitations.} The codimension story rests on one controlled contrast
@@ -801,7 +799,7 @@ cover one network. Our energy-score comparisons are within-suite; the suites hav
 different units and scales and are not comparable to each other.""")
     w("")
 
-    # ------------------------------------------------------- reproducibility
+    # , , , , , , , , , , , , , , , , , , - reproducibility
     w(r"\section{Reproducibility}\label{sec:repro}")
     w(r"""All data are public and require no API key. Every table and figure in this
 paper is generated from the run files by a script in the repository; no number is
@@ -810,7 +808,7 @@ registered hypotheses and their acceptance criteria are included in the suppleme
 the form in which they were written before the sweep.""")
     w("")
 
-    # -------------------------------------------------------------- bibliography
+    # , , , , , , , , , , , , , , , , , , , , -- bibliography
     w(r"\bibliographystyle{plain}")
     w(r"\begin{thebibliography}{99}")
     w(bibitems())

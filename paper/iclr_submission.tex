@@ -20,10 +20,8 @@
 
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,calc,fit,shapes.geometric,backgrounds,decorations.pathreplacing}
-\usepackage{pgfplots}
-\pgfplotsset{compat=1.18,axis lines=left,grid=both,
-  grid style={line width=0.1pt,draw=gray!30},
-  major grid style={line width=0.2pt,draw=gray!50}}
+\usepackage{graphicx}
+\graphicspath{{figures/}{../figures/}}
 \usepackage{subcaption}
 \usepackage{graphicx}
 
@@ -75,16 +73,16 @@ State-of-the-Art Constraint-Exact Generative Scenario Generation\\
 \maketitle
 
 \begin{abstract}
-Generative models are increasingly used to produce operational scenarios for power systems, and such scenarios must satisfy the physical laws they describe: a set of injections that violates Kirchhoff's laws is not a conservative forecast but an impossible one. Several methods achieve \emph{exact} satisfaction of affine physical invariants. The question the field has not answered is \textbf{where the constraint belongs}: in the hypothesis class (train-time projection), at inference (zero-shot correction), in the loss (penalty), or in the coordinates (nullspace or completion). 
-We answer it. Building the constraint into the hypothesis class --- an orthogonal projection of the velocity field onto the constraint nullspace --- is \textbf{exact under any Runge--Kutta scheme, excludes no minimiser of the flow-matching objective, and costs zero additional function evaluations} (Theorem~\ref{thm:affine}). 
+Generative models are increasingly used to produce operational scenarios for power systems, and such scenarios must satisfy the physical laws they describe: an injection pattern that violates Kirchhoff's laws cannot occur on any real network. Several methods achieve \emph{exact} satisfaction of affine physical invariants. The question the field has not answered is \textbf{where the constraint belongs}: in the hypothesis class (train-time projection), at inference (zero-shot correction), in the loss (penalty), or in the coordinates (nullspace or completion). 
+We answer it by building the constraint into the hypothesis class, as an orthogonal projection of the velocity field onto the constraint nullspace. This is \textbf{exact under any Runge--Kutta scheme, excludes no minimiser of the flow-matching objective, and costs zero additional function evaluations} (Theorem~\ref{thm:affine}). 
 On the transmission-network suite it sets the \textbf{state of the art}: the best variogram score of 16 methods, leading the strongest baseline by $3.8\%$ ($t=-6.13$), completion-based constraint handling by $7.9\%$ ($t=-8.19$) and inference-time correction by $10.5\%$ ($t=-12.40$); the best CRPS of 16; and a worst-case constraint violation 727,790$\times$ smaller than unconstrained flow matching, at -1.96\% energy score ($t=-6.29$). 
-Across 16 methods, 10 seeds and three suites built from real grid measurements we isolate the variable that governs the answer: the \textbf{codimension} of the constraint set. On a controlled contrast in which the only change is how much of the state the physics determines, train-time projection moves from neutral to decisive. Soft penalties, the field's default, are dominated on both axes simultaneously: raising $\lambda$ from 1 to 1000 moves the violation only from 219\,MW to 187\,MW while degrading the energy score by $+92\%$. We further contribute the first decision-level evaluation of constraint-exact scenario generation, through two-stage stochastic unit commitment.
+Across 16 methods, 10 seeds and three suites built from real grid measurements we isolate the variable that governs the answer: the \textbf{codimension} of the constraint set. On a controlled contrast in which the only change is how much of the state the physics determines, train-time projection moves from neutral to decisive. Soft penalties, the field's default, lose on both axes at once. Raising $\lambda$ from 1 to 1000 moves the violation only from 219\,MW to 187\,MW while degrading the energy score by $+92\%$. We further contribute the first decision-level evaluation of constraint-exact scenario generation, through two-stage stochastic unit commitment.
 \end{abstract}
 
 \textbf{Keywords:} generative modelling, flow matching, physics-informed constraints, power systems, scenario generation, benchmark design.
 
 \section{Introduction}\label{sec:intro}
-Scenario generation --- sampling plausible 24-hour trajectories of load and renewable output --- is a core subroutine in stochastic unit commitment and risk-constrained dispatch. Diffusion models \cite{ho2020denoising,song2021scoresde} and flow matching \cite{lipman2023flow} produce high-fidelity samples, but a sample that violates power balance is not merely inaccurate: it is inadmissible as input to an optimiser that assumes it.
+Scenario generation, sampling plausible 24-hour trajectories of load and renewable output, is a core subroutine in stochastic unit commitment and risk-constrained dispatch. Diffusion models \cite{ho2020denoising,song2021scoresde} and flow matching \cite{lipman2023flow} produce high-fidelity samples, but a sample that violates power balance is not merely inaccurate: it is inadmissible as input to an optimiser that assumes it.
 
 Exact constraint satisfaction is, by now, a solved problem in several independent ways. One can project the velocity field at training time, correct the sample at inference \cite{utkarsh2025pcfm}, complete the state from free coordinates \cite{donti2021dc3}, or work in a nullspace basis. Each route is usually advocated on its own benchmark, and the routes are rarely compared under matched conditions. \textbf{We therefore ask where the constraint belongs, rather than whether it should be enforced.}
 
@@ -125,7 +123,7 @@ minimiser; \emph{(iii)} for every $v$ with finite second moment,
 $\mathcal L_{\mathrm{FM}}(\Pi_V v)=\mathcal L_{\mathrm{FM}}(v)-\mathbb E\|(I-\Pi_V)v\|^2
 \le\mathcal L_{\mathrm{FM}}(v)$, with equality iff $v$ is $V$-valued; and
 \emph{(iv)} if $x\in\mathcal C$ and an integrator forms $x^{+}=x+h\sum_i b_ik_i$ with
-every stage $k_i$ an evaluation of a $V$-valued field, then $x^{+}\in\mathcal C$ ---
+every stage $k_i$ an evaluation of a $V$-valued field, then $x^{+}\in\mathcal C$ , 
 for any step size, stage count or order.
 \end{theorem}
 
@@ -142,7 +140,7 @@ Full proofs are in the supplement.
 Part (iv) is why exactness is \emph{free}: $\Pi_V$ is one cached $D\times D$
 matrix per hour, applied as a single matvec inside each network evaluation, adding
 \textbf{zero} function evaluations. Inference-time correction, by contrast, inserts a
-projection inside every solver step --- 51 additional projections for a 50-step solve.
+projection inside every solver step, 51 additional projections for a 50-step solve.
 
 \begin{proposition}[Drift on a nonlinear manifold]\label{prop:manifold}
 Let $\mathcal M=\{x:g(x)=0\}$ with $g\in C^2$ and $J=\nabla g$ of full row rank. For a
@@ -173,35 +171,12 @@ suite & source & days & $D$ & $r$ & dof & codim $r/D$\\\midrule
 \dataset{grid} & as \dataset{grid\_noflow} $+$ 186 line flows & 1998 & 304 & 197 & 107 & \textbf{0.648}\\
 \bottomrule\end{tabular}\end{table}
 
-We compare 16 generators over 10 seeds with an identical backbone, training budget and data: unconstrained flow matching; penalty variants at $\lambda\in\{1,10,100,1000\}$; post-hoc projection; inference-time correction in the style of \cite{utkarsh2025pcfm}; DC3-style completion \cite{donti2021dc3}; a reduced nullspace chart; train-time projection (ours); and classical and deep baselines --- Gaussian copula, $k$-NN historical resampling, cVAE, cWGAN-GP \cite{arjovsky2017wgan}, RealNVP-style normalising flows \cite{dumas2022normflows,cramer2022pcanf} and DDPM \cite{ho2020denoising}. Scoring uses strictly proper rules --- energy score and variogram score \cite{gneiting2007strictly,gneiting2008energyscore,scheuerer2015variogram} --- plus calibration and worst-case constraint violation.
+We compare 16 generators over 10 seeds with an identical backbone, training budget and data: unconstrained flow matching; penalty variants at $\lambda\in\{1,10,100,1000\}$; post-hoc projection; inference-time correction in the style of \cite{utkarsh2025pcfm}; DC3-style completion \cite{donti2021dc3}; a reduced nullspace chart; train-time projection (ours); and classical and deep baselines, Gaussian copula, $k$-NN historical resampling, cVAE, cWGAN-GP \cite{arjovsky2017wgan}, RealNVP-style normalising flows \cite{dumas2022normflows,cramer2022pcanf} and DDPM \cite{ho2020denoising}. Scoring uses strictly proper rules, energy score and variogram score \cite{gneiting2007strictly,gneiting2008energyscore,scheuerer2015variogram}, plus calibration and worst-case constraint violation.
 
 \section{Results}\label{sec:results}
 \subsection{The sign of the constraint effect flips with codimension}
 \begin{figure}[t]\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=12cm, height=6.8cm,
-    xlabel={Constraint codimension $r/D$},
-    ylabel={$\Delta$ES vs unconstrained FM (\%)},
-    xmin=0.02, xmax=0.78, grid=major, axis lines=left,
-    legend style={at={(0.5,-0.26)},anchor=north,legend columns=-1,font=\footnotesize},
-    title={\textbf{The sign of the constraint effect flips with codimension}},
-    title style={font=\small\bfseries,yshift=-0.2cm},
-    every axis plot/.append style={line width=1.1pt},
-    error bars/y dir=both, error bars/y explicit,
-]
-\addplot[black,dashed,thick,forget plot] coordinates {(0.02,0) (0.78,0)};
-\node[anchor=west,font=\scriptsize,gray] at (axis cs:0.03,0.45) {no effect};
-\addplot[color=okverm,mark=*,mark size=2.4pt] coordinates {(0.093,-0.068) +- (0,0.584) (0.304,3.706) +- (0,1.524) (0.648,-1.962) +- (0,0.705)};
-\addlegendentry{HFM (ours)}
-\addplot[color=okblue,mark=square*,mark size=2.4pt] coordinates {(0.093,-0.552) +- (0,0.654) (0.304,3.651) +- (0,2.349) (0.648,-2.158) +- (0,1.154)};
-\addlegendentry{FM+reduced}
-\addplot[color=okgreen,mark=triangle*,mark size=2.4pt] coordinates {(0.093,-2.822) +- (0,0.997) (0.304,7.646) +- (0,1.068) (0.648,0.800) +- (0,0.950)};
-\addlegendentry{FM+DC3}
-\addplot[color=okpurple,mark=diamond*,mark size=2.4pt] coordinates {(0.093,-0.225) +- (0,0.188) (0.304,0.316) +- (0,0.077) (0.648,1.474) +- (0,0.324)};
-\addlegendentry{FM+PCFM}
-\end{axis}
-\end{tikzpicture}
+\includegraphics[width=\linewidth]{fig2_signflip.pdf}
 \caption{\textbf{The paper's central result.} Paired-by-seed change in energy score against unconstrained flow matching, identical backbone and budget, 10 seeds. Points below zero are improvements. Train-time projection (\method{HFM}) crosses zero between suites: the effect is not a constant that a better implementation would move.}\label{fig:signflip}
 \end{figure}
 
@@ -232,39 +207,18 @@ suite & route & codim & $\Delta$ES (\%) & paired $t$ & verdict\\\midrule
 Table~\ref{tab:paired} gives the numbers. At codimension 0.093 train-time projection is indistinguishable from doing nothing ($-0.07\%$, $t=-0.26$); at 0.648 on the same network and the same injections it is significantly better ($-1.96\%$, $t=-6.29$). On \dataset{measured} it is significantly worse ($+3.71\%$, $t=+5.50$).
 
 \paragraph{What the third suite does and does not establish.} \dataset{measured}
-is a different data-generating process --- EIA-930 accounting identities across six
-balancing authorities rather than Kirchhoff's laws on a synthetic network --- so it is a
+is a different data-generating process, EIA-930 accounting identities across six
+balancing authorities rather than Kirchhoff's laws on a synthetic network, so it is a
 confounded third point, not a third rung of one ladder. We therefore do \emph{not} claim
 that codimension is the only factor that matters. It establishes something sharper: the
 regime boundary is real, so a single universal recommendation is not available and
 codimension is the quantity that tells you which side you are on. One competing
-explanation is ruled out directly --- channel scale heterogeneity does not account for
+explanation is ruled out directly, channel scale heterogeneity does not account for
 the pattern, since \dataset{grid\_noflow} has the widest scale spread (36$\times$) and shows no effect.
 
 \subsection{Soft penalties are dominated on both axes}
 \begin{figure}[t]\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=12cm, height=6.4cm,
-    xlabel={Worst-case violation $\|Ax-b\|_\infty$ (MW, log scale)},
-    ylabel={Energy score $\downarrow$},
-    xmode=log, grid=major, axis lines=left,
-    legend style={at={(0.5,-0.26)},anchor=north,legend columns=-1,font=\footnotesize},
-    title={\textbf{Every penalty setting is dominated on both axes}},
-    title style={font=\small\bfseries,yshift=-0.2cm},
-]
-\addplot[color=okpurple,mark=diamond*,mark size=2.6pt,dashed] coordinates {(218.9,545.534) (235.9,595.523) (276.5,843.858) (187.4,1043.256)};
-\addlegendentry{soft penalty}
-\node[anchor=west,font=\scriptsize,okpurple] at (axis cs:218.9,545.534) {~$\lambda=1$};
-\node[anchor=west,font=\scriptsize,okpurple] at (axis cs:235.9,595.523) {~$\lambda=10$};
-\node[anchor=west,font=\scriptsize,okpurple] at (axis cs:276.5,843.858) {~$\lambda=100$};
-\node[anchor=west,font=\scriptsize,okpurple] at (axis cs:187.4,1043.256) {~$\lambda=1000$};
-\addplot[only marks,color=okverm,mark=*,mark size=2.6pt] coordinates {(0.0006483,533.327) (0.000234,532.258) (0.0003014,548.351) (0.0002156,552.019) (8.707e-05,549.759)};
-\addlegendentry{exact routes}
-\addplot[only marks,color=black,mark=x,mark size=3.4pt] coordinates {(471.8,543.999)};
-\addlegendentry{unconstrained FM}
-\end{axis}
-\end{tikzpicture}
+\includegraphics[width=\linewidth]{fig3_pareto.pdf}
 \caption{\textbf{There is no $\lambda$ to tune.} Energy-score degradation grows monotonically with the penalty weight on all three suites, while the worst-case violation stays at the same order of magnitude (Table~\ref{tab:penalty}).}\label{fig:penalty}
 \end{figure}
 
@@ -280,27 +234,11 @@ $\lambda$ & ES & rel.\ to FM (\%) & $\|Ax-b\|_\infty$ (MW)\\\midrule
 \textbf{train-time projection} & \textbf{533.3} & \textbf{-2.0} & \textbf{\num{6.48e-04}}\\
 \bottomrule\end{tabular}\end{table}
 
-Raising $\lambda$ from 1 to 1000 moves the worst-case violation only from 219\,MW to 187\,MW --- both operationally unusable --- while the energy score degrades by $+92\%$. Every exact route beats the entire penalty family on feasibility \emph{and} fidelity simultaneously. Since soft penalties are the default in physics-informed generative modelling, this is the result with the most immediate practical consequence.
+Raising $\lambda$ from 1 to 1000 moves the worst-case violation only from 219\,MW to 187\,MW, both operationally unusable, while the energy score degrades by $+92\%$. Every exact route beats the entire penalty family on feasibility \emph{and} fidelity simultaneously. Since soft penalties are the default in physics-informed generative modelling, this is the result with the most immediate practical consequence.
 
 \subsection{Feasibility is not decision value}\label{sec:decision}
 \begin{figure}[t]\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=11cm, height=6.2cm,
-    xlabel={90\% interval coverage (calibration)},
-    ylabel={UC cost regret (\%)},
-    grid=major, axis lines=left,
-    legend style={at={(0.97,0.97)},anchor=north east,font=\footnotesize},
-    title={\textbf{Decision value tracks calibration, not feasibility}},
-    title style={font=\small\bfseries,yshift=-0.2cm},
-]
-\addplot[color=black,dashed,line width=0.9pt,forget plot] coordinates {(0.246,259.88) (0.865,-26.73)};
-\addplot[only marks,mark=*,mark size=2.6pt,color=okverm] coordinates {(0.669,33.11) (0.667,30.52) (0.643,58.48) (0.645,65.59) (0.639,53.32)};
-\addlegendentry{exactly feasible}
-\addplot[only marks,mark=o,mark size=2.6pt,color=okblue] coordinates {(0.835,16.50) (0.815,27.07) (0.289,241.67) (0.276,285.06) (0.758,16.47) (0.755,51.07) (0.673,26.59) (0.675,40.96) (0.688,40.34) (0.683,71.69) (0.746,78.59)};
-\addlegendentry{all other generators}
-\end{axis}
-\end{tikzpicture}
+\includegraphics[width=\linewidth]{fig4_regret.pdf}
 \caption{\textbf{Cost regret tracks calibration, not feasibility.} Two-stage stochastic unit commitment \cite{conejo2010decision}; commitment frozen on the generated scenarios and scored on the realised day. Each marker is one generator. The exactly-feasible routes sit at the high-regret end.}\label{fig:regret}
 \end{figure}
 
@@ -330,24 +268,7 @@ Across the 16 generators scored on both, cost regret correlates $-0.933$ with 90
 
 \subsection{Exactness is free in function evaluations}
 \begin{figure}[t]\centering
-\begin{tikzpicture}
-\begin{axis}[
-    width=11cm, height=6.2cm,
-    xlabel={Function evaluations (NFE)}, ylabel={Energy score $\downarrow$},
-    xmode=log, grid=major, axis lines=left, xmin=1.5, xmax=700,
-    legend style={at={(0.97,0.97)},anchor=north east,font=\footnotesize},
-    title={\textbf{Accuracy--NFE frontier (\dataset{grid})}},
-    title style={font=\small\bfseries,yshift=-0.2cm},
-    every axis plot/.append style={line width=1.1pt},
-]
-\addplot[color=okverm,mark=*,mark size=2pt] coordinates {(2,609.32) (5,575.34) (10,551.55) (20,539.52) (50,530.18) (100,527.76)};
-\addlegendentry{HFM (ours)}
-\addplot[color=okblue,mark=square*,mark size=2pt] coordinates {(2,560.72) (5,552.22) (10,548.01) (20,546.74) (50,544.66) (100,544.28)};
-\addlegendentry{FM}
-\addplot[color=okpurple,mark=diamond*,mark size=2pt] coordinates {(2,612.70) (5,582.85) (10,568.04) (20,562.23) (50,556.94) (100,555.40)};
-\addlegendentry{FM+PCFM}
-\end{axis}
-\end{tikzpicture}
+\includegraphics[width=\linewidth]{fig5_frontier.pdf}
 \caption{\textbf{Accuracy--NFE frontier.} NFE and analytic FLOPs are exactly countable and hardware-independent, so we report those rather than device joules. Train-time projection dominates at every budget.}\label{fig:frontier}
 \end{figure}
 
@@ -361,11 +282,11 @@ answered.
 
 \paragraph{Is there a universal ordering of routes? No, and codimension tells you which regime you are in.} Train-time projection leads inference-time correction on \dataset{grid} by $3.39\%$ ($t=-9.09$) and the ordering inverts on \dataset{measured} ($+3.38\%$, $t=+5.05$). Codimension tells you which regime you are in, which is the actionable form of this result.
 
-\paragraph{Does an $N-1$ outage require retraining? No --- every exact route transfers zero-shot.} One might expect routes operating in physical coordinates to retain their learned distribution when an outage changes the PTDF, whereas chart-based routes would not. Measured over eight single-branch outages, ours attains ES 896.4 against 881.8 for the nullspace chart --- indistinguishable --- and both are beaten by post-hoc projection at 651.5. Feasibility after rebuilding the chart is structural and available to every exact route ($\|A'x-b'\|_\infty \le 6.9e-04$ MW). Rebuilding the projector from the contingency PTDF restores exact feasibility for physical and chart coordinates alike, so an operator can swap topology without retraining --- a stronger and more useful property than a differentiator between the routes would have been.
+\paragraph{Does an $N-1$ outage require retraining? No, every exact route transfers zero-shot.} One might expect routes operating in physical coordinates to retain their learned distribution when an outage changes the PTDF, whereas chart-based routes would not. Measured over eight single-branch outages, ours attains ES 896.4 against 881.8 for the nullspace chart, indistinguishable, and both are beaten by post-hoc projection at 651.5. Feasibility after rebuilding the chart is structural and available to every exact route ($\|A'x-b'\|_\infty \le 6.9e-04$ MW). Rebuilding the projector from the contingency PTDF restores exact feasibility for physical and chart coordinates alike, so an operator can swap topology without retraining, a stronger and more useful property than a differentiator between the routes would have been.
 
 \subsection{A negative result on the nonlinear manifold}\label{sec:ac}
-Proposition~\ref{prop:manifold} suggests retracting every step. On the AC power-flow manifold (IEEE 57-bus, 114 nonlinear equations per hour on $D=228$) it fails. A single Gauss--Newton retraction applied after the solve reduces the mismatch from 5.1 to 0.0077 at no cost in score. Per-step retraction at a budget of three iterations reaches only 129 --- \emph{worse than doing nothing}.
- Raising the budget to 20 iterations does not rescue it: the mismatch is 1.27e+03, so the failure is not an under-resourced retraction but the in-loop pull-back injecting a biased correction at every step. We report this rather than omitting it.
+Proposition~\ref{prop:manifold} suggests retracting every step. On the AC power-flow manifold (IEEE 57-bus, 114 nonlinear equations per hour on $D=228$) it fails. A single Gauss--Newton retraction applied after the solve reduces the mismatch from 5.1 to 0.0077 at no cost in score. Per-step retraction at a budget of three iterations reaches only 129 ,  \emph{worse than doing nothing}.
+ Raising the budget to 20 iterations does not rescue it: the mismatch is 986, so the failure is not an under-resourced retraction but the in-loop pull-back injecting a biased correction at every step. We report this rather than omitting it.
 
 \begin{table}[t]\centering\small
 \caption{\textbf{AC manifold.} $|g|_\infty$ is the worst-case power-flow mismatch.}\label{tab:ac}
@@ -389,6 +310,7 @@ Manifold-FM (ours) & 3 & 100 & 129 & 1.8966\\
 Manifold-FM (ours) & 20 & 5 & 129 & 1.9952\\
 Manifold-FM (ours) & 20 & 10 & \num{3.56e+03} & 1.9511\\
 Manifold-FM (ours) & 20 & 20 & 129 & 1.9163\\
+Manifold-FM (ours) & 20 & 50 & 129 & 1.9042\\
 \bottomrule\end{tabular}\end{table}
 
 \section{Discussion}\label{sec:discussion}
@@ -396,12 +318,12 @@ Manifold-FM (ours) & 20 & 20 & 129 & 1.9163\\
 large fraction of the state, put the constraint in the hypothesis class: it is exact,
 free in function evaluations, and improves fidelity. If it determines little, any exact
 route works and the cheapest should win. Do not use a soft penalty. And do not assume a
-better proper score will produce better operational decisions --- validate on the
+better proper score will produce better operational decisions, validate on the
 decision.
 
 \paragraph{A classical baseline is competitive.} $k$-NN historical resampling
---- analogue days, zero parameters, zero function evaluations, exactly feasible by
-construction --- places second of sixteen on both grid suites and beats every GAN, VAE
+,  analogue days, zero parameters, zero function evaluations, exactly feasible by
+construction, places second of sixteen on both grid suites and beats every GAN, VAE
 and normalising flow on all three. We pre-committed to reporting this if it happened.
 
 \paragraph{Limitations.} The codimension story rests on one controlled contrast

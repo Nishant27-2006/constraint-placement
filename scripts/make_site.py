@@ -13,8 +13,7 @@ import numpy as np
 from scipy.stats import spearmanr
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from figures import (fig_signflip, fig_pareto, fig_regret, fig_frontier,
-                     fig_ranking, paired_ci)
+from figures import paired_ci
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "results")
@@ -65,8 +64,7 @@ def g(x, sig=4):
 
 CSS = """
 
-.fig{width:100%;height:auto;display:block;margin:0 auto;overflow:visible;
-  --plot-bg:#fbfcfd;--grid-c:#e3e9ef;--fg:#1a1a1a;--muted:#6b7480;--bad:#C41E3A}
+.fig{width:100%;height:auto;display:block;margin:0 auto}
 .fig .grid{stroke:var(--grid-c);stroke-width:1}
 .fig .rule{stroke:#8a929c;stroke-width:1.4}
 .fig .rule-lbl{font:600 11px 'Noto Sans',sans-serif;fill:#8a929c}
@@ -182,6 +180,14 @@ def main():
     def endsec():
         w("</div></div></div></section>")
 
+    def img(name):
+        """Inline the matplotlib SVG: crisp at any zoom, one file to serve."""
+        path = os.path.join(ROOT, "figures", f"{name}.svg")
+        raw = open(path, encoding="utf-8").read()
+        raw = raw[raw.index("<svg"):]
+        raw = raw.replace("<svg ", '<svg class="fig" role="img" ', 1)
+        return raw
+
     def figure(n, title, svg, caption):
         w('<figure class="figure">')
         w(f'<div class="fignum">Figure {n}</div>')
@@ -236,14 +242,14 @@ def main():
     w('<div class="content has-text-justified">')
     w("<p>Generative models are increasingly used to produce operational scenarios "
       "for power systems, and such scenarios must satisfy the physical laws they "
-      "describe: a set of injections that violates Kirchhoff's laws is not a "
-      "conservative forecast but an impossible one. Several methods achieve "
+      "describe. An injection pattern that violates Kirchhoff's laws cannot occur "
+      "on any real network. Several methods achieve "
       "<b>exact</b> satisfaction of affine physical invariants. The question the "
       "field has not answered is <b>where the constraint belongs</b>: in the "
       "hypothesis class, at inference, in the loss, or in the coordinates.</p>")
-    w(f"<p>We answer it. Building the constraint into the hypothesis class "
-      f"&mdash; an orthogonal projection of the velocity field onto the constraint "
-      f"nullspace &mdash; is <b>exact under any Runge&ndash;Kutta scheme, excludes no "
+    w(f"<p>We answer it by building the constraint into the hypothesis class, as an "
+      f"orthogonal projection of the velocity field onto the constraint nullspace. "
+      f"That is <b>exact under any Runge&ndash;Kutta scheme, excludes no "
       f"minimiser of the flow-matching objective, and costs zero additional function "
       f"evaluations</b>. On the transmission-network suite it sets the "
       f"<b>state of the art</b>: best variogram score of {vs_rank[1]} methods, "
@@ -256,8 +262,8 @@ def main():
       f"grid measurements, we isolate the variable that governs the answer: the "
       f"<b>codimension</b> of the constraint set. On a controlled contrast where the "
       f"only change is how much of the state the physics determines, train-time "
-      f"projection moves from neutral to decisive. Soft penalties &mdash; the field's "
-      f"default &mdash; are dominated on both axes simultaneously.</p>")
+      f"projection moves from neutral to decisive. Soft penalties, the field's "
+      f"default, are dominated on both axes simultaneously.</p>")
     endsec()
 
     # ------------------------------------------------------------ key numbers
@@ -265,16 +271,16 @@ def main():
     w('<div class="stat-grid">')
     w(f'<div class="stat"><span class="v good">#{vs_rank[0]} of {vs_rank[1]}</span>'
       f'<span class="k"><b>Best variogram score</b> on the <code>grid</code> suite '
-      f"&mdash; the metric that measures spatio-temporal dependence structure. "
+      f"(the metric that measures spatio-temporal dependence structure). "
       f"Leads the runner-up by {-vs_gain:.1f}% (t&nbsp;=&nbsp;{vs_t:+.1f}) and "
       f"inference-time correction by {-vs_gain_p:.1f}% "
       f"(t&nbsp;=&nbsp;{vs_t_p:+.1f}).</span></div>")
     w(f'<div class="stat"><span class="v good">#{crps_rank[0]} of {crps_rank[1]}</span>'
-      f'<span class="k"><b>Best CRPS</b> on the same suite, from the same run &mdash; '
+      f'<span class="k"><b>Best CRPS</b> on the same suite, from the same run, '
       f"sharpness and calibration together, at matched budget.</span></div>")
     w(f'<div class="stat"><span class="v good">{feas_ratio:,.0f}&times;</span>'
       f'<span class="k"><b>Lower constraint violation</b> than unconstrained flow '
-      f"matching &mdash; {math.log10(feas_ratio):.1f} orders of magnitude, "
+      f"matching, {math.log10(feas_ratio):.1f} orders of magnitude, "
       f"{fm_eq:.0f}&nbsp;MW down to {hf_eq:.0e}&nbsp;MW, at zero extra "
       f"cost.</span></div>")
     w("</div>")
@@ -282,7 +288,7 @@ def main():
       'style="color:#7a7a7a">Sixteen methods, ten seeds, identical backbone, '
       "budget and data.</p></div>")
     figure(1, f"All {nmeth} generators on one scale (<code>grid</code> suite)",
-           fig_ranking(mains, "grid", "grid"),
+           img("fig1_ranking"),
            f"Mean energy score over {nseeds} seeds with standard-error bars, ranked. "
            "Marker shape encodes family, so the grouping survives greyscale and "
            "colour-vision deficiency. <b>A non-neural baseline "
@@ -292,11 +298,11 @@ def main():
     # ---------------------------------------------------------------- result 1
     sec("Codimension Decides Where the Constraint Belongs")
     figure(2, "The sign of the constraint effect flips with codimension",
-           fig_signflip(meta, mains),
+           img("fig2_signflip"),
            f"Paired change in energy score against unconstrained flow matching, "
            f"{nseeds} seeds, identical backbone, budget and data. Bars are 95% "
            f"confidence intervals; filled markers are significant at the 5% level. "
-           f"<b>Train-time projection crosses zero</b> \u2014 significantly worse on "
+           f"<b>Train-time projection crosses zero</b>: significantly worse on "
            f"<code>measured</code>, significantly better on <code>grid</code>. Hover "
            f"any marker for its interval and <i>t</i>-statistic.")
     w('<div class="takeaway"><p><b>Codimension is the control variable, and it '
@@ -307,15 +313,15 @@ def main():
       "win. This is a controlled contrast, not a correlation.</p>"
       "<p><b>The practical rule follows directly:</b> the more of the state your "
       "physics pins down, the more you gain by building it into the hypothesis class "
-      "rather than bolting it on afterwards. At high codimension &mdash; the regime "
+      "rather than bolting it on afterwards. At high codimension, the regime "
       "real transmission networks live in, where line flows are determined functions "
-      "of injections &mdash; train-time projection is the method of choice.</p></div>")
+      "of injections, train-time projection is the method of choice.</p></div>")
     endsec()
 
     # ---------------------------------------------------------------- result 2
     sec("Soft Penalties Are Dominated on Both Axes", light=True)
     figure(3, "Feasibility and fidelity on one plane",
-           fig_pareto(mains),
+           img("fig3_pareto"),
            "Every penalty setting sits above and to the right of the exact routes: "
            "worse energy score <i>and</i> a violation four orders of magnitude larger. "
            "Raising \u03bb walks the family <b>up</b> the fidelity axis without moving "
@@ -340,15 +346,15 @@ def main():
     e1k = mean_of(mains["grid"], "FM+penalty(1000)", "eq_max")
     dg = 100 * (mean_of(mains["grid"], "FM+penalty(1000)") - base) / base
     w(f'<div class="takeaway"><p>Three orders of magnitude of \u03bb move the violation '
-      f"from {e1:.3g}\u00a0MW to {e1k:.3g}\u00a0MW \u2014 the same order, still "
-      f"unacceptable \u2014 while the score degrades to <b>{dg:+.0f}%</b>. "
+      f"from {e1:.3g}\u00a0MW to {e1k:.3g}\u00a0MW, the same order and still "
+      f"unacceptable, while the score degrades to <b>{dg:+.0f}%</b>. "
       "<b>There is no \u03bb to tune.</b></p></div>")
     endsec()
 
     # ---------------------------------------------------------------- result 3
     sec("We Also Ran the Decision")
     figure(4, "Decision value tracks calibration, not feasibility",
-           fig_regret(down, mains["measured"]),
+           img("fig4_regret"),
            "Two-stage stochastic unit commitment: commitment frozen on the generated "
            "scenarios, scored on the realised day, regret against perfect foresight. "
            "<b>The exactly-feasible routes are the sharpest and the most expensive.</b> "
@@ -372,7 +378,7 @@ def main():
       f"p&nbsp;=&nbsp;{sp.pvalue:.3f}</span></div>")
     w(f'<div class="stat"><span class="v dim">{r_es:+.3f}</span><span class="k">'
       f"regret vs <b>energy score</b><br>Spearman ρ&nbsp;=&nbsp;{sp_es.statistic:+.2f}, "
-      f"p&nbsp;=&nbsp;{sp_es.pvalue:.2f} &mdash; <b>not significant</b></span></div>")
+      f"p&nbsp;=&nbsp;{sp_es.pvalue:.2f}, <b>not significant</b></span></div>")
     w("</div>")
     w(f'<div class="takeaway"><p><b>Scenario feasibility does not reach the scheduling '
       "decision; calibration carries it.</b> The exactly-feasible routes take the worst "
@@ -394,7 +400,7 @@ def main():
                     key=lambda r: r["nfe"])
         sec("Exactness Is Free in Function Evaluations", light=True)
         figure(5, "Accuracy per function evaluation",
-               fig_frontier(eff),
+               img("fig5_frontier"),
                f"NFE and analytic FLOPs are exactly countable and hardware-independent, "
                f"so we report those rather than device joules. <b>Train-time projection "
                f"dominates at every budget</b>, reaching a better score at NFE "
@@ -440,7 +446,7 @@ def main():
           f"eight outages, for physical and chart coordinates alike "
           f"({np.mean(by[('HFM (ours)','swapped')]):.4g} vs "
           f"{np.mean(by[('FM+reduced','swapped')]):.4g}). Operators can swap topology "
-          f"without retraining &mdash; a stronger and more useful result than a "
+          f"without retraining, a stronger and more useful result than a "
           f"differentiator would have been.</p></div>")
     if ac:
         fmv = np.mean([r["nl_max"] for r in ac if r["method"] == "FM"])
@@ -453,7 +459,7 @@ def main():
           f"<p><b>Measured:</b> one retraction after the solve reaches "
           f"|g|<sub>∞</sub>&nbsp;=&nbsp;{rfv:.3g} from {fmv:.3g}, free in score. "
           f"Per-step retraction at 3 Gauss-Newton iterations reaches only "
-          f"{np.mean(mf3):.3g} &mdash; worse than doing nothing.</p></div>")
+          f"{np.mean(mf3):.3g}, worse than doing nothing.</p></div>")
     w('<div class="takeaway"><p><b>A non-neural baseline places second of sixteen</b> on '
       "both grid suites. <code>kNN-Historical</code> resamples analogue days: zero "
       "parameters, zero NFE, exactly feasible by construction. It beats every GAN, VAE "
