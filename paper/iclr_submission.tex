@@ -58,12 +58,12 @@ Exact constraint satisfaction is, by now, a solved problem in several independen
 \paragraph{Contributions.}
 \begin{itemize}
 \item \textbf{Affine theory.} Theorem~\ref{thm:affine} shows that restricting the velocity field to $\ker A$ is exact under any Runge--Kutta scheme, excludes no minimiser of the flow-matching objective, and never increases the loss. Exactness costs no function evaluations.
-\item \textbf{A codimension-controlled benchmark.} Three suites built from real EIA-930 measurements and the pglib IEEE 118-bus network \cite{pglib2021,zimmerman2011matpower}, differing in the fraction of the state the physics determines, with two suites identical except for that fraction.
+\item \textbf{A codimension-controlled benchmark.} Three suites built from real EIA-930 measurements and the pglib IEEE 118-bus network \citep{pglib2021,zimmerman2011matpower}, differing in the fraction of the state the physics determines, with two suites identical except for that fraction.
 \item \textbf{The empirical answer, which is not universal.} The sign of the effect of train-time projection flips with codimension (Figure~\ref{fig:signflip}), significantly in both directions on identical code.
 \item \textbf{A decision-level evaluation.} Cost regret in two-stage stochastic unit commitment is uncorrelated with the energy score and strongly correlated with calibration (Figure~\ref{fig:regret}), which questions the field's reliance on proper scoring rules as a proxy for operational value.
 \end{itemize}
 
-\paragraph{What we do not claim.} We claim no novelty for hard constraints in flow matching: \cite{utkarsh2025pcfm} imposes arbitrary nonlinear constraints zero-shot at inference. We claim no novelty for adaptive-step sampling \cite{dormand1980family,chen2018neural}. Our method is not symplectic and is unrelated to Hamiltonian generative flows \cite{holderrieth2024hamiltonian} or Hamiltonian neural networks \cite{greydanus2019hamiltonian}; we report NFE and analytic FLOPs rather than device joules, because those are exactly countable and hardware-independent.
+\paragraph{What we do not claim.} We claim no novelty for hard constraints in flow matching: \citet{utkarsh2025pcfm} imposes arbitrary nonlinear constraints zero-shot at inference. We claim no novelty for adaptive-step sampling \citep{dormand1980family,chen2018neural}. Our method is not symplectic and is unrelated to Hamiltonian generative flows \citep{holderrieth2024hamiltonian} or Hamiltonian neural networks \citep{greydanus2019hamiltonian}; we report NFE and analytic FLOPs rather than device joules, because those are exactly countable and hardware-independent.
 
 \section{Where a Constraint Can Go}\label{sec:routes}
 Scenarios live in $\mathcal X=\mathbb R^{T\times D}$ with an affine invariant
@@ -116,7 +116,7 @@ Let $\mathcal M=\{x:g(x)=0\}$ with $g\in C^2$ and $J=\nabla g$ of full row rank.
 tangential field ($Jv=0$ on $\mathcal M$), an order-$p$ Runge--Kutta step leaves
 $\|g\|$ unchanged to $O(h^{p+1})$, so the invariant drifts by $O(h^{p})$ over $1/h$
 steps; one Gauss--Newton retraction $R(x)=x-J^{+}g(x)$ contracts quadratically
-\cite{hairer2006geometric}. Section~\ref{sec:ac} reports what happens when the
+\citep{hairer2006geometric}. Section~\ref{sec:ac} reports what happens when the
 retraction is run at a finite iteration budget, which is not what the asymptotic
 statement suggests.
 \end{proposition}
@@ -124,7 +124,7 @@ statement suggests.
 \section{Benchmark}\label{sec:benchmark}
 All suites are built from public data with no API key: EIA-930 hourly
 balancing-authority operating data (2019-01-02 to 2024-06-30) and the pglib-opf IEEE
-118-bus and MATPOWER case57 networks \cite{pglib2021,zimmerman2011matpower,birchfield2017synthetic}.
+118-bus and MATPOWER case57 networks \citep{pglib2021,zimmerman2011matpower,birchfield2017synthetic}.
 The design isolates \textbf{codimension} $r/D$, the fraction of each hour's state that
 $A$ determines analytically. Critically, \dataset{grid\_noflow} and \dataset{grid} are
 the \emph{same} network and the \emph{same} measured injections: \dataset{grid} merely
@@ -208,7 +208,7 @@ Raising $\lambda$ from 1 to 1000 moves the worst-case violation only from 219\,M
 \subsection{Feasibility is not decision value}\label{sec:decision}
 \begin{figure}[t]\centering
 \includegraphics[width=\linewidth]{fig4_regret.pdf}
-\caption{\textbf{Cost regret tracks calibration, not feasibility.} Two-stage stochastic unit commitment \cite{conejo2010decision}; commitment frozen on the generated scenarios and scored on the realised day. Each marker is one generator. The exactly-feasible routes sit at the high-regret end.}\label{fig:regret}
+\caption{\textbf{Cost regret tracks calibration, not feasibility.} Two-stage stochastic unit commitment \citep{conejo2010decision}; commitment frozen on the generated scenarios and scored on the realised day. Each marker is one generator. The exactly-feasible routes sit at the high-regret end.}\label{fig:regret}
 \end{figure}
 
 \begin{table}[t]\centering\small
@@ -375,6 +375,7 @@ that produced every figure. Lower is better in every column except the coverage
 columns, whose targets are 0.9 and 0.5.
 
 \begin{table}[h]\centering\footnotesize
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lrrrrrrrrrrr}\toprule
 method & ES & CRPS & VS & SW$_1$ & MW$_1$ & ACF & Ramp & PSD & cov$_{90}$ & cov$_{50}$ & $\|Ax-b\|_\infty$ \\\midrule
 FM+DC3 & 334 & 1.38 & \num{2.73e+03} & 2.19 & 0.796 & 0.0348 & 0.745 & 1.93 & 0.718 & 0.381 & \num{2.38e-04} \\
@@ -393,11 +394,12 @@ cWGAN-GP & 398 & 1.71 & \num{3.94e+03} & 3.25 & 1.14 & 0.026 & 0.49 & 0.999 & 0.
 FM+penalty(1000) & 421 & 2.07 & \num{5.82e+03} & 3.88 & 1.93 & 0.159 & 4.09 & 4.06 & 0.977 & 0.808 & 184 \\
 DDPM & 428 & 1.96 & \num{3.8e+03} & 5.87 & 2.09 & 0.115 & 2.82 & 3.12 & 0.943 & 0.635 & \num{1.1e+03} \\
 NormFlow-RealNVP & 463 & 2.06 & \num{6.71e+03} & 5.57 & 1.87 & 0.0757 & 1.66 & 2.13 & 0.812 & 0.445 & 837 \\
-\bottomrule\end{tabular}
+\bottomrule\end{tabular}}
 \caption{Suite \dataset{grid\_noflow}: all 16 methods over 10 seeds.}
 \end{table}
 
 \begin{table}[h]\centering\footnotesize
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lrrrrrrrrrrr}\toprule
 method & ES & CRPS & VS & SW$_1$ & MW$_1$ & ACF & Ramp & PSD & cov$_{90}$ & cov$_{50}$ & $\|Ax-b\|_\infty$ \\\midrule
 FM+penalty(10) & \num{1.09e+05} & \num{1.56e+03} & \num{1.80e+06} & \num{2.39e+03} & \num{1.73e+03} & 0.0163 & 233 & 1.62 & 0.688 & 0.345 & \num{1.38e+04} \\
@@ -416,11 +418,12 @@ GaussianCopula & \num{1.45e+05} & \num{1.99e+03} & \num{2.42e+06} & \num{1.26e+0
 cWGAN-GP & \num{1.48e+05} & \num{2.08e+03} & \num{2.48e+06} & \num{2.41e+03} & \num{1.72e+03} & 0.0295 & 238 & 1.41 & 0.276 & 0.119 & \num{8.09e+03} \\
 NormFlow-RealNVP & \num{1.49e+05} & \num{2.11e+03} & \num{2.74e+06} & \num{1.74e+03} & \num{1.04e+03} & 0.165 & \num{2.09e+03} & 3.61 & 0.758 & 0.37 & \num{1.81e+05} \\
 FM+penalty(1000) & \num{1.77e+05} & \num{2.43e+03} & \num{3.34e+06} & \num{1.75e+03} & \num{1.07e+03} & 0.234 & \num{2.77e+03} & 4.13 & 0.746 & 0.408 & \num{1.53e+04} \\
-\bottomrule\end{tabular}
+\bottomrule\end{tabular}}
 \caption{Suite \dataset{measured}: all 16 methods over 10 seeds.}
 \end{table}
 
 \begin{table}[h]\centering\footnotesize
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lrrrrrrrrrrr}\toprule
 method & ES & CRPS & VS & SW$_1$ & MW$_1$ & ACF & Ramp & PSD & cov$_{90}$ & cov$_{50}$ & $\|Ax-b\|_\infty$ \\\midrule
 FM+reduced & 532 & 2.17 & \num{1.42e+03} & 2.16 & 0.98 & 0.0158 & 0.535 & 1.09 & 0.688 & 0.348 & \num{2.34e-04} \\
@@ -439,7 +442,7 @@ NormFlow-RealNVP & 719 & 3.29 & \num{2.36e+03} & 4.67 & 2.57 & 0.0545 & 1.74 & 1
 FM+penalty(100) & 844 & 3.66 & \num{2.92e+03} & 7.55 & 3.47 & 0.104 & 2.09 & 2.27 & 0.717 & 0.409 & 277 \\
 FM+penalty(1000) & \num{1.04e+03} & 4.79 & \num{3.37e+03} & 9.43 & 4.41 & 0.0799 & 1.82 & 2.11 & 0.582 & 0.322 & 187 \\
 DDPM & \num{1.43e+03} & 7.15 & \num{9.26e+03} & 27.1 & 13.8 & 0.282 & 25 & 5.12 & 0.998 & 0.955 & \num{2.78e+03} \\
-\bottomrule\end{tabular}
+\bottomrule\end{tabular}}
 \caption{Suite \dataset{grid}: all 16 methods over 10 seeds.}
 \end{table}
 
