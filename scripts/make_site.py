@@ -224,7 +224,10 @@ def main():
       "for power grids</p>")
     w('<div class="is-size-5 publication-authors"><span class="author-block">'
       "Anonymous Authors</span></div>")
-    w('<div class="venue-tag">Under review at ICLR</div>')
+    w('<div class="venue-tag">Under review at ICLR 2027</div>')
+    w(f'<p style="margin-top:.9rem;font-size:.95rem;color:#4a4a4a">'
+      f'Code and benchmark: <a href="{REPO}"><code>'
+      f'github.com/Nishant27-2006/constraint-placement</code></a></p>')
     w('<div class="column has-text-centered"><div class="publication-links">')
     for icon, label, href in [
             ("fas fa-file-pdf", "Paper", "paper.pdf"),

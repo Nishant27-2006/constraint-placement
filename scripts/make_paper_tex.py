@@ -27,7 +27,11 @@ CITE_KEYS = ["lipman2023flow", "ho2020denoising", "song2021scoresde", "donti2021
              "chen2018neural", "dormand1980family", "hairer2006geometric",
              "gneiting2007strictly", "gneiting2008energyscore", "scheuerer2015variogram",
              "dumas2022normflows", "cramer2022pcanf", "pglib2021", "zimmerman2011matpower",
-             "arjovsky2017wgan", "conejo2010decision", "birchfield2017synthetic"]
+             "arjovsky2017wgan", "conejo2010decision", "birchfield2017synthetic",
+             "amos2017optnet", "agrawal2019cvxlayers", "dalal2018safetylayer",
+             "christopher2024projected", "bastek2025pidm", "chung2023dps",
+             "fishman2023metropolis", "cramer2022validation", "campbell2024generative",
+             "erives2024verlet", "chen2021neuralsymplecticform", "alet2021noether"]
 
 
 def load(n):
@@ -376,7 +380,10 @@ def main():
       f"from 1 to 1000 moves the violation only from {e1:.3g}\\,MW to {e1k:.3g}\\,MW "
       f"while degrading the energy score by ${dg:+.0f}\\%$. We further contribute the "
       f"first decision-level evaluation of constraint-exact scenario generation, "
-      f"through two-stage stochastic unit commitment.")
+      f"through two-stage stochastic unit commitment. Code, the benchmark and the "
+      f"generators that produce every table and figure here from the raw run files are "
+      f"at \\url{{https://github.com/Nishant27-2006/constraint-placement}}, with the "
+      f"project page at \\url{{https://hamiltonian-network.github.io}}.")
     w(r"\end{abstract}")
     w("")
     w(r"\textbf{Keywords:} generative modelling, flow matching, physics-informed "
@@ -430,6 +437,53 @@ def main():
     w("")
 
     # , , , , , , , , , , , , , , , , , , , ,  framework
+    w(r"\section{Related Work}\label{sec:related}")
+    w(r"""\paragraph{Hard constraints inside a learned model.} A long line of work embeds
+an optimisation problem in a network so that outputs satisfy constraints by
+construction, from quadratic programs as layers \citep{amos2017optnet} to general
+disciplined convex programs \citep{agrawal2019cvxlayers}, and safety layers that project
+a policy's action back into a feasible set \citep{dalal2018safetylayer}.
+\citet{donti2021dc3} take the cheaper route for equality constraints, predicting a set
+of free variables and completing the rest by solving the constraint system. Our
+\dataset{DC3} and reduced-coordinate baselines are that idea applied to a generative
+flow. What this literature establishes is that exactness is achievable; what it does not
+settle is which placement to prefer when several exact options exist, which is the
+question we take up.""")
+    w("")
+    w(r"""\paragraph{Constrained generative modelling.} Guidance and projection methods
+steer a diffusion or flow sample toward a constraint set at inference. Posterior sampling
+handles noisy linear inverse problems \citep{chung2023dps}; projected diffusion enforces
+hard constraints during sampling \citep{christopher2024projected}; physics-informed
+diffusion penalises residuals of a governing equation \citep{bastek2025pidm}; and
+constrained manifolds can be respected by sampling on the manifold itself
+\citep{fishman2023metropolis}. Closest to us, \citet{utkarsh2025pcfm} impose arbitrary
+nonlinear constraints on a pretrained flow, zero-shot, at inference time. We reimplement
+that route as a baseline rather than competing with it, and the comparison we care about
+is where the constraint is imposed rather than whether it can be.""")
+    w("")
+    w(r"""\paragraph{Scenario generation for power systems.} Normalising flows
+\citep{dumas2022normflows} and principal-component variants \citep{cramer2022pcanf}
+are established generators for energy forecasting, and \citet{cramer2022validation}
+argue for validating such scenarios beyond marginal fit.
+\citet{campbell2024generative} survey the wider use of generative models in power
+systems. Evaluation in this literature rests almost entirely on proper scoring rules;
+our downstream unit-commitment study is a direct test of whether those scores predict
+the decision they stand in for.""")
+    w("")
+    w(r"""\paragraph{Structure-preserving integration.} Keeping an invariant along a
+numerically integrated trajectory is classical \citep{hairer2006geometric}, and recent
+work brings that machinery into generative modelling through symplectic structure
+\citep{chen2021neuralsymplecticform}, Verlet-style flow maps
+\citep{erives2024verlet}, and learned conservation laws \citep{alet2021noether}.
+Hamiltonian neural networks \citep{greydanus2019hamiltonian} and Hamiltonian generative
+flows \citep{holderrieth2024hamiltonian} share vocabulary with our setting but solve a
+different problem: our field is not symplectic, and the invariant we preserve is an
+affine constraint imposed by the network topology rather than an energy learned from
+data. Proposition~\ref{prop:manifold} is the standard drift-and-retraction result
+specialised to a learned tangential field, and Section~\ref{sec:ac} reports what happens
+to it at a finite iteration budget.""")
+    w("")
+
     w(r"\section{Where a Constraint Can Go}\label{sec:routes}")
     w(r"""Scenarios live in $\mathcal X=\mathbb R^{T\times D}$ with an affine invariant
 $\mathcal C=\{x: Ax=b\}$ encoding power balance and the flow definitions.
@@ -811,7 +865,10 @@ behind every figure. Proofs of Theorem~\ref{thm:affine} and
 Proposition~\ref{prop:manifold} are in Appendix~\ref{app:proofs}. The supplementary
 material contains the full implementation, a single resumable command that reproduces
 the pipeline end to end, and the generator scripts that produce every table and figure
-in this paper directly from the run files, so no number here is transcribed by hand.""")
+in this paper directly from the run files, so no number here is transcribed by hand. The
+same code is released at \\url{https://github.com/Nishant27-2006/constraint-placement}
+and the project page at \\url{https://hamiltonian-network.github.io} carries the
+figures and the complete result record.""")
     w("")
     w(r"\subsubsection*{AI use statement}")
     w(r"""We used generative AI tools to aid and polish the writing of this manuscript.

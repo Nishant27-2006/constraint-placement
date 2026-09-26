@@ -45,7 +45,7 @@ Paper under double-blind review}
 Generative models are increasingly used to produce operational scenarios for power systems, and such scenarios must satisfy the physical laws they describe: an injection pattern that violates Kirchhoff's laws cannot occur on any real network. Several methods achieve \emph{exact} satisfaction of affine physical invariants. The question the field has not answered is \textbf{where the constraint belongs}: in the hypothesis class (train-time projection), at inference (zero-shot correction), in the loss (penalty), or in the coordinates (nullspace or completion). 
 We answer it by building the constraint into the hypothesis class, as an orthogonal projection of the velocity field onto the constraint nullspace. This is \textbf{exact under any Runge--Kutta scheme, excludes no minimiser of the flow-matching objective, and costs zero additional function evaluations} (Theorem~\ref{thm:affine}). 
 On the transmission-network suite it sets the \textbf{state of the art}: the best variogram score of 16 methods, leading the strongest baseline by $3.8\%$ ($t=-6.13$), completion-based constraint handling by $7.9\%$ ($t=-8.19$) and inference-time correction by $10.5\%$ ($t=-12.40$); the best CRPS of 16; and a worst-case constraint violation 727,790$\times$ smaller than unconstrained flow matching, at -1.96\% energy score ($t=-6.29$). 
-Across 16 methods, 10 seeds and three suites built from real grid measurements we isolate the variable that governs the answer: the \textbf{codimension} of the constraint set. On a controlled contrast in which the only change is how much of the state the physics determines, train-time projection moves from neutral to decisive. Soft penalties, the field's default, lose on both axes at once. Raising $\lambda$ from 1 to 1000 moves the violation only from 219\,MW to 187\,MW while degrading the energy score by $+92\%$. We further contribute the first decision-level evaluation of constraint-exact scenario generation, through two-stage stochastic unit commitment.
+Across 16 methods, 10 seeds and three suites built from real grid measurements we isolate the variable that governs the answer: the \textbf{codimension} of the constraint set. On a controlled contrast in which the only change is how much of the state the physics determines, train-time projection moves from neutral to decisive. Soft penalties, the field's default, lose on both axes at once. Raising $\lambda$ from 1 to 1000 moves the violation only from 219\,MW to 187\,MW while degrading the energy score by $+92\%$. We further contribute the first decision-level evaluation of constraint-exact scenario generation, through two-stage stochastic unit commitment. Code, the benchmark and the generators that produce every table and figure here from the raw run files are at \url{https://github.com/Nishant27-2006/constraint-placement}, with the project page at \url{https://hamiltonian-network.github.io}.
 \end{abstract}
 
 \textbf{Keywords:} generative modelling, flow matching, physics-informed constraints, power systems, scenario generation, benchmark design.
@@ -64,6 +64,52 @@ Exact constraint satisfaction is, by now, a solved problem in several independen
 \end{itemize}
 
 \paragraph{What we do not claim.} We claim no novelty for hard constraints in flow matching: \citet{utkarsh2025pcfm} imposes arbitrary nonlinear constraints zero-shot at inference. We claim no novelty for adaptive-step sampling \citep{dormand1980family,chen2018neural}. Our method is not symplectic and is unrelated to Hamiltonian generative flows \citep{holderrieth2024hamiltonian} or Hamiltonian neural networks \citep{greydanus2019hamiltonian}; we report NFE and analytic FLOPs rather than device joules, because those are exactly countable and hardware-independent.
+
+\section{Related Work}\label{sec:related}
+\paragraph{Hard constraints inside a learned model.} A long line of work embeds
+an optimisation problem in a network so that outputs satisfy constraints by
+construction, from quadratic programs as layers \citep{amos2017optnet} to general
+disciplined convex programs \citep{agrawal2019cvxlayers}, and safety layers that project
+a policy's action back into a feasible set \citep{dalal2018safetylayer}.
+\citet{donti2021dc3} take the cheaper route for equality constraints, predicting a set
+of free variables and completing the rest by solving the constraint system. Our
+\dataset{DC3} and reduced-coordinate baselines are that idea applied to a generative
+flow. What this literature establishes is that exactness is achievable; what it does not
+settle is which placement to prefer when several exact options exist, which is the
+question we take up.
+
+\paragraph{Constrained generative modelling.} Guidance and projection methods
+steer a diffusion or flow sample toward a constraint set at inference. Posterior sampling
+handles noisy linear inverse problems \citep{chung2023dps}; projected diffusion enforces
+hard constraints during sampling \citep{christopher2024projected}; physics-informed
+diffusion penalises residuals of a governing equation \citep{bastek2025pidm}; and
+constrained manifolds can be respected by sampling on the manifold itself
+\citep{fishman2023metropolis}. Closest to us, \citet{utkarsh2025pcfm} impose arbitrary
+nonlinear constraints on a pretrained flow, zero-shot, at inference time. We reimplement
+that route as a baseline rather than competing with it, and the comparison we care about
+is where the constraint is imposed rather than whether it can be.
+
+\paragraph{Scenario generation for power systems.} Normalising flows
+\citep{dumas2022normflows} and principal-component variants \citep{cramer2022pcanf}
+are established generators for energy forecasting, and \citet{cramer2022validation}
+argue for validating such scenarios beyond marginal fit.
+\citet{campbell2024generative} survey the wider use of generative models in power
+systems. Evaluation in this literature rests almost entirely on proper scoring rules;
+our downstream unit-commitment study is a direct test of whether those scores predict
+the decision they stand in for.
+
+\paragraph{Structure-preserving integration.} Keeping an invariant along a
+numerically integrated trajectory is classical \citep{hairer2006geometric}, and recent
+work brings that machinery into generative modelling through symplectic structure
+\citep{chen2021neuralsymplecticform}, Verlet-style flow maps
+\citep{erives2024verlet}, and learned conservation laws \citep{alet2021noether}.
+Hamiltonian neural networks \citep{greydanus2019hamiltonian} and Hamiltonian generative
+flows \citep{holderrieth2024hamiltonian} share vocabulary with our setting but solve a
+different problem: our field is not symplectic, and the invariant we preserve is an
+affine constraint imposed by the network topology rather than an energy learned from
+data. Proposition~\ref{prop:manifold} is the standard drift-and-retraction result
+specialised to a learned tangential field, and Section~\ref{sec:ac} reports what happens
+to it at a finite iteration budget.
 
 \section{Where a Constraint Can Go}\label{sec:routes}
 Scenarios live in $\mathcal X=\mathbb R^{T\times D}$ with an affine invariant
@@ -255,7 +301,7 @@ answered.
 
 \subsection{A negative result on the nonlinear manifold}\label{sec:ac}
 Proposition~\ref{prop:manifold} suggests retracting every step. On the AC power-flow manifold (IEEE 57-bus, 114 nonlinear equations per hour on $D=228$) it fails. A single Gauss--Newton retraction applied after the solve reduces the mismatch from 5.1 to 0.0077 at no cost in score. Per-step retraction at a budget of three iterations reaches only 129 ,  \emph{worse than doing nothing}.
- Raising the budget to 20 iterations does not rescue it: the mismatch is 986, so the failure is not an under-resourced retraction but the in-loop pull-back injecting a biased correction at every step. We report this rather than omitting it.
+ Raising the budget to 20 iterations does not rescue it: the mismatch is 814, so the failure is not an under-resourced retraction but the in-loop pull-back injecting a biased correction at every step. We report this rather than omitting it.
 
 \begin{table}[t]\centering\small
 \caption{\textbf{AC manifold.} $|g|_\infty$ is the worst-case power-flow mismatch.}\label{tab:ac}
@@ -280,6 +326,7 @@ Manifold-FM (ours) & 20 & 5 & 129 & 1.9952\\
 Manifold-FM (ours) & 20 & 10 & \num{3.56e+03} & 1.9511\\
 Manifold-FM (ours) & 20 & 20 & 129 & 1.9163\\
 Manifold-FM (ours) & 20 & 50 & 129 & 1.9042\\
+Manifold-FM (ours) & 20 & 100 & 129 & 1.8961\\
 \bottomrule\end{tabular}\end{table}
 
 \section{Discussion}\label{sec:discussion}
@@ -325,7 +372,10 @@ behind every figure. Proofs of Theorem~\ref{thm:affine} and
 Proposition~\ref{prop:manifold} are in Appendix~\ref{app:proofs}. The supplementary
 material contains the full implementation, a single resumable command that reproduces
 the pipeline end to end, and the generator scripts that produce every table and figure
-in this paper directly from the run files, so no number here is transcribed by hand.
+in this paper directly from the run files, so no number here is transcribed by hand. The
+same code is released at \\url{https://github.com/Nishant27-2006/constraint-placement}
+and the project page at \\url{https://hamiltonian-network.github.io} carries the
+figures and the complete result record.
 
 \subsubsection*{AI use statement}
 We used generative AI tools to aid and polish the writing of this manuscript.
